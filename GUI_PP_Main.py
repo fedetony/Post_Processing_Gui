@@ -152,6 +152,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
             'Stairs':{'edges':[None],'orientation':'vertical','baseline':[0.0],'Fill':False,'Use_Lines_style':False},
             'Stackplot':{'baseline':'zero','colors':['']},
             'Pie':{ 'explode':[0],'colors':[''], 'autopct':'', 'pctdistance':0.6, 'shadow':False, 'labeldistance':1.1, 'startangle':0, 'radius':1, 'counterclock':True, 'wedgeprops':{"width":1,"linewidth": 1, "edgecolor": "white"}, 'textprops':{'color':'black', 'weight':"bold",'size':8}, 'center':[0, 0], 'frame':False, 'rotatelabels':False, 'normalize':True}, 
+            'Violinplot':{'positions_key':'', 'vert':True, 'widths':0.5, 'showmeans':False, 'showextrema':True, 'showmedians':False, 'quantiles':[''], 'points':100, 'bw_method':'scott'},
             'Background':{'BG_Path_File':'','Show_Axis':True,'BG_Aspect':1,'BG_Out_Color':'None','BG_in_Color':'None','BG_out_alpha':1,'BG_in_alpha':1},
             'Error_bars':{'Use_Err_bars':False,'Err_Y_Use_key':'ErrUp=0.5','Err_X_Use_key':'ErrLow=0.5','fmt':'o','capthick':2.0,'barsabove':False,'elinewidth':2.0,'ecolor':'black','capsize':0.0,'errorevery_X':1,'errorevery_Y':1,'lolims':[False], 'uplims':[False], 'xlolims':[False], 'xuplims':[False]},
             'Additional':{'Axis_U': self.get_one_axis_struct('',[-100,100],'', [-80.0,80.0],True,90,5.0,12,True),'Axis_V': self.get_one_axis_struct('',[-100,100],'', [-80.0,80.0],True,90,5.0,12,True),'Axis_W': self.get_one_axis_struct('',[-100,100],'', [-80.0,80.0],True,90,5.0,12,True),'math_definitions':'cte=5|ctlst=[1,2,3]','math_declarations':['']},
@@ -186,7 +187,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
             else:
                 markerlistmod.append(mmm)
 
-        plottypelist=['image','scatter','contour','contourf','bar','barh','loglog','semilogx','semilogy','quiver','barbs','plot','hist','hist2d','errorbar','stem','streamplot','lines','eventplot','stackplot','stairs','specgram','phase_spectrum','magnitude_spectrum','pie'] #3D others surface, contour3D
+        plottypelist=['image','scatter','contour','contourf','bar','barh','loglog','semilogx','semilogy','quiver','barbs','plot','hist','hist2d','errorbar','stem','streamplot','lines','eventplot','stackplot','stairs','specgram','phase_spectrum','magnitude_spectrum','pie','violin'] #3D others surface, contour3D
         dashcapstylist=['butt', 'projecting', 'round']
         dashjoinstylist=['miter', 'round', 'bevel']
         drawstylelist=['default', 'steps', 'steps-pre', 'steps-mid', 'steps-post']
@@ -211,6 +212,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
         stream_intdir=['forward', 'backward', 'both']      
         legendmode=[None,'expand','']    
         legendalignment=['center', 'left', 'right'] 
+        violinmethod=['scott', 'silverman']
         typefloat=str(type(0.1))
         typeint=str(type(0))
         typestr=str(type('hola'))
@@ -254,6 +256,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
               'Stem':{'bottom':{'__m__':'is_value_type','__mv__':typefloat},'orientation':{'__m__':'limited_selection','__mv__':historientation}},
               'Stairs':{'edges':{'__m__':'is_list_item_type','__mv__':typefloat},'orientation':{'__m__':'limited_selection','__mv__':historientation},'baseline':{'__m__':'is_list_item_type','__mv__':typefloat}},
               'Pie':{ 'explode':{'__m__':'is_list_item_type','__mv__':typefloat},'colors':{'__m__':'is_list_item_type','__mv__':typestr}, 'autopct':{'__m__':'is_value_type','__mv__':typestr}, 'pctdistance':{'__m__':'is_value_type','__mv__':typefloat}, 'labeldistance':{'__m__':'is_value_type','__mv__':typefloat}, 'startangle':{'__m__':'is_value_type','__mv__':typefloat}, 'radius':{'__m__':'is_value_type','__mv__':typefloat}, 'wedgeprops':{"width":{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GT','__mv__1':0}, "linewidth": {'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0}, "edgecolor": {'__m__':'is_value_type','__mv__':typestr}}, 'textprops':{'Fontsize':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0}}, 'center':{'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2}}, 
+              'Violinplot':{'positions_key':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'}, 'widths':{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0}, 'points':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'quantiles':{'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_item_format','__mv__1':'(.+)=(.+?)$'}, 'bw_method':{'__m__':'limited_selection','__mv__':violinmethod}}, 
               'Error_bars':{'Err_Y_Use_key':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'},'Err_X_Use_key':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'},'capsize':{'__m__':'is_value_type','__mv__':typeint,'__m__':'is_value_GTEQ','__mv__':0.0},'capthick':{'__m__':'is_value_type','__mv__':typefloat},'elinewidth':{'__m__':'is_value_type','__mv__':typefloat},'capsize':{'__m__':'is_value_type','__mv__':typefloat},'errorevery_X':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'errorevery_Y':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'lolims':{'__m__':'is_list_item_type','__mv__':typebool}, 'uplims':{'__m__':'is_list_item_type','__mv__':typebool}, 'xlolims':{'__m__':'is_list_item_type','__mv__':typebool}, 'xuplims':{'__m__':'is_list_item_type','__mv__':typebool}},# 'fmt':{'__m__':'limited_selection','__mv__':markerlistmod}
               'Background':{'BG_Aspect':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'BG_out_alpha':{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0,'__m__2':'is_value_LTEQ','__mv__2':1},'BG_in_alpha':{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0,'__m__2':'is_value_LTEQ','__mv__2':1}},
               'Additional':{'Axis_U': self.get_one_axis_struct_mask(),'Axis_V': self.get_one_axis_struct_mask(),'Axis_W': self.get_one_axis_struct_mask(),'math_declarations':{'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_item_format','__mv__1':'(.+)=(.+?)$'},'math_definitions':{'__m__':'is_format','__mv__':'([a-zA-Z_].*=.+)(|[a-zA-Z_].*=.+)*'}},

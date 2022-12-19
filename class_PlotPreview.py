@@ -62,6 +62,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         self.use_graphicsView=True #False 
         self.set_FigureCanvas()
         matplotlib.pyplot.set_loglevel('info')
+        self.debugmode=False
          
     
     def set_FigureCanvas(self):
@@ -841,15 +842,16 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             plotok=False
         return plotok,plinfo,ax,Plotinfo
 
-    def log_Exception(self):        
-        exc_type, exc_obj, tb = sys.exc_info()
-        f = tb.tb_frame
-        lineno = tb.tb_lineno
-        filename = f.f_code.co_filename
-        linecache.checkcache(filename)        
-        line = linecache.getline(filename, lineno, f.f_globals)
-        filename=self.aDialog.extract_filename(filename,True)
-        log.error('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj))
+    def log_Exception(self):  
+        if self.debugmode==True:      
+            exc_type, exc_obj, tb = sys.exc_info()
+            f = tb.tb_frame
+            lineno = tb.tb_lineno
+            filename = f.f_code.co_filename
+            linecache.checkcache(filename)        
+            line = linecache.getline(filename, lineno, f.f_globals)
+            filename=self.aDialog.extract_filename(filename,True)
+            log.error('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj))
 
     def do_a_bar_plot(self,ax,Plotinfo):        
         plinfo=self.get_plotted_info(Plotinfo) 
@@ -1051,6 +1053,16 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         pie_normalize=Plotinfo['pie_normalize']
         pie_wedgeprops=Plotinfo['pie_wedgeprops']
 
+        violin_positions_key=Plotinfo['violin_positions_key']
+        violin_vert=Plotinfo['violin_vert']
+        violin_widths=Plotinfo['violin_widths']
+        violin_showmeans=Plotinfo['violin_showmeans']
+        violin_showextrema=Plotinfo['violin_showextrema']
+        violin_showmedians=Plotinfo['violin_showmedians']
+        violin_quantiles=Plotinfo['violin_quantiles']
+        violin_points=Plotinfo['violin_points']
+        violin_bw_method=Plotinfo['violin_bw_method']
+
         log.info('{} starting {} {}D as {}{}'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'], plot_Dim,axis_info,Add_axis_info))
         #reset the labels for this plot        
         ppp=self.Plot_dict[Plotinfo['me_plot']]
@@ -1073,6 +1085,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             usedaxis=[]
             y_sv=[] 
             x_sv=[]
+            all_sv=[]
             for iii in range(0,6):
                 jjj=numpy.fmod(iii, 3)+1 #count 1 to 3
                 if iii<3:    
@@ -1089,6 +1102,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                             x_sv=_V1 
                         else:                            
                             y_sv.append(_V1)
+                        all_sv.append(_V1)
                             
                 else:
                     _V5=self.get_var_axis_info_(jjj,Add_axis_info,[uuu,vvv,www])         
@@ -1102,6 +1116,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                             log.warning('nan values found in vector {} Replacing with 0'.format(vn))
                             _V5=self.replace_in_moded(numpy.NaN,0,_V5)
                         y_sv.append(_V5)
+                        all_sv.append(_V5)
             #log.info('{} {} {}'.format(len(x_sv),len(xxx),len(dfxyz)))           
             lenv=len(ccc)    
             log.info('{} using the following axis to plot: {}'.format(Plotinfo['Plot_Type'],usedaxis))
@@ -1114,8 +1129,78 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             else:
                 doplot=True
 
-            if doplot==True:  
+            if doplot==True:                  
                 plotok=False   
+                if Plotinfo['Plot_Type']=='violin':
+                    legends=[]
+                    for uaxis in usedaxis:
+                        legends.append(labeldict[uaxis]['Label_Text'])
+                    
+                    #get quantiles
+                    if self.is_list(violin_quantiles)==True: 
+                        #log.info('Entered list')
+                        violin_quantileslist=self.get_moded_property(usedaxis,violin_quantiles)
+                        violin_quantileslist=self.getsized_property(usedaxis,violin_quantileslist)
+                        log.info('Evaluating the following quantiles:{}'.format(violin_quantileslist))
+                        v_quan=[]
+                        for vq in violin_quantileslist:  
+                            if vq not in [None,'','none','None']:
+                                try:
+                                    vq_df=self.eval_data_into_a_df(vq,logshow=True,use_filtered=True)
+                                    v_quantiles=numpy.asarray(vq_df)
+                                    if len(v_quantiles)!=len(x_sv):
+                                        v_quantiles,_,_=self.get_error_dxyzsized(v_quantiles,vq,Plotinfo)
+                                        ev_quan=numpy.asarray(v_quantiles)
+                                    else:
+                                        ev_quan=v_quantiles
+                                    #normalize to [0,1]
+                                    lv_quan=ev_quan.tolist()
+                                    vnorm=self.list_map(lv_quan,0,1)
+                                    ev_quan=numpy.asarray(vnorm)
+                                except Exception as e:
+                                    log.warning('Quantil {} was not evaluated found error: {}'.format(v_quantiles,e))
+                                    ev_quan=[]
+                            else:
+                                ev_quan=[]
+                            v_quan.append(ev_quan)
+                        v_quan=self.MNmat_toMNarray(v_quan)
+                    else:
+                        v_quan=None
+                    #log.info('test got quantiles {}'.format(v_quan))
+                    
+                    #get positions
+                    if violin_positions_key not in [None,'','none','None']:
+                        try:
+                            v_df=self.eval_data_into_a_df(violin_positions_key,logshow=True,use_filtered=True)
+                            v_positions=numpy.asarray(v_df)
+                            if len(v_positions)!=len(x_sv):
+                                v_positions,_,_=self.get_error_dxyzsized(v_positions,violin_positions_key,Plotinfo)
+                                v_pos=numpy.asarray(v_positions)
+                            else:
+                                v_pos=v_positions
+                        except Exception as e:
+                            log.warning('Variable {} was not evaluated found error: {}'.format(violin_positions_key,e))
+                            v_pos=None
+                    else:
+                        v_pos=None
+                    plinfo.update({'quantiles':v_quan})
+                    plinfo.update({'positions':v_pos})
+                    dataset=self.MNmat_toMNarray(all_sv)
+                    im = ax.violinplot(dataset, positions=v_pos, quantiles=v_quan, vert=violin_vert, widths=violin_widths, showmeans=violin_showmeans, showextrema=violin_showextrema, showmedians=violin_showmedians, points=violin_points, bw_method=violin_bw_method)
+                    #set x label
+                    #Plotinfo[usedaxis[0]+'label']['Label_Text']='Positions'
+                    Plotinfo=self.update_axis_ticks_label(usedaxis[0],Plotinfo,label=Plotinfo[usedaxis[0]+'label'])
+                    for lll,leg in enumerate(legends):
+                        if lll==0:
+                            atxt='{}'.format(leg)
+                        else:
+                            atxt='{}, {}'.format(atxt,leg)
+                        #atxt=atxt.strip("'")
+                    Plotinfo[usedaxis[1]+'label']['Label_Text']=atxt
+                    Plotinfo=self.update_axis_ticks_label(usedaxis[1],Plotinfo,Plotinfo[usedaxis[1]+'label'])
+                    if violin_vert==False:
+                        Plotinfo=self.exchange_labels_ticks_X_Y(Plotinfo)
+                    plotok=True
                 
                 if Plotinfo['Plot_Type']=='pie':
                     p_exp=self.get_selected_list_moded(pie_explode)
@@ -1137,8 +1222,8 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                     p_wedgeprops=pie_wedgeprops.copy()
                     eachsize=(pwidth)/lenv
                     legends=[]
-                    def func(pct, theformat,vector=[]):
-                        #theformat=str(theformat)
+                    def pie_format_func(pct, theformat,vector=[]):
+                            #theformat=str(theformat)
                         if len(vector)!=0:
                             try:
                                 val=float(pct)/numpy.sum(vector)
@@ -1148,7 +1233,10 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                         else:
                             val=pct
                         #print(val,theformat,theformat.format(val))
+                        if theformat==None:
+                            return val
                         return theformat.format(val)
+
                     for uuu,uaxis in enumerate(usedaxis):
                         legends.append(labeldict[uaxis]['Label_Text'])
                         p_wedgeprops.update({'width':eachsize})
@@ -1161,15 +1249,14 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                         if xannolabels!=None:
                             if len(xannolabels)==0:
                                 xannolabels=None
-                            #elif len(xannolabels)!=len(avect):
-                            #    xannolabels=self.getsized_property(avect,xannolabels)
+                            
                         if pie_autopct in ['','none','None']:
                             p_autopct=''
                         else: 
                             if '%' in pie_autopct:
-                                p_autopct=lambda pct: func(pct,pie_autopct,avect)
+                                p_autopct=lambda pct: pie_format_func(pct,pie_autopct,avect)
                             else:
-                                p_autopct=lambda pct: func(pct,pie_autopct,[])
+                                p_autopct=lambda pct: pie_format_func(pct,pie_autopct,[])
                         im = ax.pie(avect, explode=p_explode, labels=xannolabels ,colors=p_colors, autopct=p_autopct, pctdistance=pie_pctdistance, shadow=pie_shadow, labeldistance=p_labeldistance, startangle=pie_startangle, radius=ext_r, counterclock=pie_counterclock, wedgeprops=p_wedgeprops, textprops=pie_textprops, center=(pie_center[0],pie_center[1]), frame=pie_frame, rotatelabels=pie_rotatelabels, normalize=pie_normalize)
                         ext_r=ext_r-eachsize
                     plotok=True
@@ -1356,6 +1443,24 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             else:
                 theenum.append(iii+1)
         return theenum
+    
+    def list_map(self,alist,rangemin,rangemax):
+        normlist=[]
+        if self.is_list(alist)==True:
+            normarr=numpy.asfarray(alist)
+            nmin=numpy.min(normarr)
+            nmax=numpy.max(normarr)
+            #log.info('before map -> {} {} {}'.format(normarr,nmin,nmax))
+            if (nmax-nmin)==0:
+                nmax=1
+                nmin=0
+            #define mapping function
+            map_function = lambda x: (x-nmin)/(nmax-nmin)*(rangemax-rangemin)+rangemin
+            normarr=map_function(normarr)
+            #log.info('Mapped -> {}'.format(normarr))
+            normlist=normarr.tolist()  
+                
+        return normlist
 
 
     
@@ -2734,7 +2839,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         if Plotinfo['Plot_Type'] in ['streamplot']:
             plotok,plinfo,ax,Plotinfo=self.do_a_Stream_plot(ax,Plotinfo) 
         
-        if Plotinfo['Plot_Type'] in ['eventplot','stackplot','stairs','pie']:
+        if Plotinfo['Plot_Type'] in ['eventplot','stackplot','stairs','pie','violin']:
             plotok,plinfo,ax,Plotinfo=self.do_a_Event_plot(ax,Plotinfo) 
 
         if Plotinfo['Plot_Type'] in ['plot','loglog','semilogx','semilogy','errorbar']:
@@ -4414,7 +4519,16 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         plotinfo.update({'pie_rotatelabels':ppp['Pie']['rotatelabels']})
         plotinfo.update({'pie_normalize':ppp['Pie']['normalize']})
         plotinfo.update({'pie_wedgeprops':ppp['Pie']['wedgeprops']})
-        
+        #Violin
+        plotinfo.update({'violin_positions_key':ppp['Violinplot']['positions_key']})
+        plotinfo.update({'violin_vert':ppp['Violinplot']['vert']})
+        plotinfo.update({'violin_widths':ppp['Violinplot']['widths']})
+        plotinfo.update({'violin_showmeans':ppp['Violinplot']['showmeans']})
+        plotinfo.update({'violin_showextrema':ppp['Violinplot']['showextrema']})
+        plotinfo.update({'violin_showmedians':ppp['Violinplot']['showmedians']})
+        plotinfo.update({'violin_quantiles':ppp['Violinplot']['quantiles']})
+        plotinfo.update({'violin_points':ppp['Violinplot']['points']})
+        plotinfo.update({'violin_bw_method':ppp['Violinplot']['bw_method']})
         #Layout
         numplots=len(self.Plot_dict)
         layout=ppp['Layout_Position_HV']
@@ -5661,7 +5775,8 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                     plotinfo.update({'wv':None}) 
         #set uvw same size as xyz
         try:
-            dfuvw=self.get_dfuvw_sized_to_dfxyz(plotinfo['dfxyz'],plotinfo['dfuvw'],plotinfo)                                                       
+            thedfxyz=plotinfo['dfxyz']
+            dfuvw=self.get_dfuvw_sized_to_dfxyz(thedfxyz,plotinfo['dfuvw'],plotinfo)                                                       
         except Exception as e:   
             dfuvw=[]         
             #plotinfo.update({'dfxyz':[]})    
@@ -5731,7 +5846,9 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             plotinfo.update({'ux':ux})
             plotinfo.update({'uy':uy})
             plotinfo.update({'uz':uz})
-
+            log.info('Found unique vector lengths lux={} luy={} luz={}'.format(len(ux),len(uy),len(uz)))
+            log.debug('dfaxis_x={} dfaxis_y={} dfaxis_z={}'.format(dfaxis_x,dfaxis_y,dfaxis_z))
+            log.debug('ux={} uy={} uz={}'.format(ux,uy,uz))
             if plotinfo['plot_Dim']==3:
                 if len(ux)>1 and len(uy)>1 and len(uz)>1:
                     log.info('3D Plot')                    
@@ -5995,6 +6112,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                     plotinfo.update({'zv':tzv})
 
         except Exception as e:
+            log.error('axisinfo: {} Dim:{}'.format(axis_info,plotinfo['plot_Dim']))
             log.error('Processing Data into vectors: {}'.format(e))
             return plotinfo
 
@@ -6389,6 +6507,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                 afilter=rematch.groups()[1]
                 if filtereq==True:
                     avar,_=self.get_filter_math_var_name(avar)
+                avar=avar.strip()
             return avar,afilter 
         except:            
             return variable,''
