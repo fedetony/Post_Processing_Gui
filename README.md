@@ -23,6 +23,7 @@ Features
 - Several types of 2D plots available:
   - scatter
   - contour,contourf 
+  - stream
   - bar,barh 
   - quiver
   - barbs
@@ -51,7 +52,7 @@ Features
 To do:
 ---------------------------------------------------------------------------------
 - Change plot, item ordering? does it matter?
-- Finish the 2D plots missing: hexbin, boxplot, violin, cohere, specgram, phase_spectrum, magnitude_spectrum...
+- Finish the 2D plots missing: hexbin, boxplot, heatmap, violin, cohere, specgram, phase_spectrum, magnitude_spectrum...
 - Support other projections
 - Support tables
 - Add additional title prefix legends and labels editing after plot.
