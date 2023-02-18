@@ -152,7 +152,9 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
             'Stairs':{'edges':[None],'orientation':'vertical','baseline':[0.0],'Fill':False,'Use_Lines_style':False},
             'Stackplot':{'baseline':'zero','colors':['']},
             'Pie':{ 'explode':[0],'colors':[''], 'autopct':'', 'pctdistance':0.6, 'shadow':False, 'labeldistance':1.1, 'startangle':0, 'radius':1, 'counterclock':True, 'wedgeprops':{"width":1,"linewidth": 1, "edgecolor": "white"}, 'textprops':{'color':'black', 'weight':"bold",'size':8}, 'center':[0, 0], 'frame':False, 'rotatelabels':False, 'normalize':True}, 
-            'Violinplot':{'positions_key':'', 'vert':True, 'widths':0.5, 'showmeans':False, 'showextrema':True, 'showmedians':False, 'quantiles':[''], 'points':100, 'bw_method':'scott'},
+            'Violinplot':{'positions_key':'', 'vert':True, 'widths':0.5, 'showmeans':False, 'showextrema':True, 'showmedians':False, 'quantiles':[''], 'points':100, 'bw_method':'scott','bw_method_KDE':0.0},
+            'Boxplot':{'positions':[], 'widths':[],'notch':False, 'sym':'b+', 'orientation':'vertical', 'whis':[0,100], 'bootstrap':None, 'usermedians':[], 'patch_artist':False, 'conf_intervals':['',''], 'meanline':False, 'showmeans':False, 'showcaps':True, 'showbox':True, 'showfliers':True, 'manage_ticks':True, 'autorange':False, 'zorder':0.2, 'boxprops':{'color':['k'],'linestyle':['-'],'linewidth':[1.0]}, 'flierprops': {'marker':['o'], 'markerfacecolor':['r'], 'markersize':[12], 'linestyle':[''], 'markeredgecolor':['g'],'linewidth':[1.0]}, 'medianprops':{'color':['r'],'linestyle':['-'],'linewidth':[1.0]}, 'meanprops':{'color':['r'],'marker':['^'],'markerfacecolor':['r'],'markeredgecolor':['k'],'markersize':[6],'linestyle':['--'],'linewidth':[1.0]}, 'capprops':{'color':['k'],'capwidths':[0.25],'linestyle':['-'],'linewidth':[1.0]}, 'whiskerprops':{'color':['k'],'linestyle':['-'],'linewidth':[1.0]}},
+            
             'Background':{'BG_Path_File':'','Show_Axis':True,'BG_Aspect':1,'BG_Out_Color':'None','BG_in_Color':'None','BG_out_alpha':1,'BG_in_alpha':1},
             'Error_bars':{'Use_Err_bars':False,'Err_Y_Use_key':'ErrUp=0.5','Err_X_Use_key':'ErrLow=0.5','fmt':'o','capthick':2.0,'barsabove':False,'elinewidth':2.0,'ecolor':'black','capsize':0.0,'errorevery_X':1,'errorevery_Y':1,'lolims':[False], 'uplims':[False], 'xlolims':[False], 'xuplims':[False]},
             'Additional':{'Axis_U': self.get_one_axis_struct('',[-100,100],'', [-80.0,80.0],True,90,5.0,12,True),'Axis_V': self.get_one_axis_struct('',[-100,100],'', [-80.0,80.0],True,90,5.0,12,True),'Axis_W': self.get_one_axis_struct('',[-100,100],'', [-80.0,80.0],True,90,5.0,12,True),'math_definitions':'cte=5|ctlst=[1,2,3]','math_declarations':['']},
@@ -170,10 +172,13 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
     
     def get_one_axis_struct_mask(self):
         typefloat=str(type(0.1))
-        typeint=str(type(0))        
+        typeint=str(type(0))
+        value_int_res={'__m__':'is_value_type','__mv__':typeint}   
+        value_floatGT0_res={'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GT','__mv__1':0}   
+        value_intGT0_res={'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0}  
         oasm={'Axis_Data_Range': {'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2}, 
               'Axis_Scale_Range': {'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2},
-              'Axis_Ticks':{'Rotation_Tick':{'__m__':'is_value_type','__mv__':typeint},'Step_Size_Tick':{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GT','__mv__1':0},'Fontsize_Tick':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0}}
+              'Axis_Ticks':{'Rotation_Tick':value_int_res,'Step_Size_Tick':value_floatGT0_res,'Fontsize_Tick':value_intGT0_res}
               }
         return oasm
 
@@ -187,7 +192,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
             else:
                 markerlistmod.append(mmm)
 
-        plottypelist=['image','scatter','contour','contourf','bar','barh','loglog','semilogx','semilogy','quiver','barbs','plot','hist','hist2d','errorbar','stem','streamplot','lines','eventplot','stackplot','stairs','specgram','phase_spectrum','magnitude_spectrum','pie','violin'] #3D others surface, contour3D
+        plottypelist=['image','scatter','contour','contourf','bar','barh','loglog','semilogx','semilogy','quiver','barbs','plot','hist','hist2d','errorbar','stem','streamplot','lines','eventplot','stackplot','stairs','specgram','phase_spectrum','magnitude_spectrum','pie','violin','boxplot'] #3D others surface, contour3D
         dashcapstylist=['butt', 'projecting', 'round']
         dashjoinstylist=['miter', 'round', 'bevel']
         drawstylelist=['default', 'steps', 'steps-pre', 'steps-mid', 'steps-post']
@@ -225,13 +230,34 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
             availablestyles.extend(matplotlib.pyplot.style.available)
         except:
             availablestyles=['','None']
-        minmaxrest={'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2,'__m__2':'is_list_item_value_GTEQ','__mv__2':0,'__m__3':'is_list_item_value_LTEQ','__mv__3':1}
-        singlelinerestriction={'linewidth':{'__m__':'is_value_type','__mv__':typefloat},'linestyle':{'__m__':'is_value_type','__mv__':typestr,'__m__1':'limited_selection','__mv__1':linestyle}}
-        linerestriction={'linewidth':{'__m__':'is_list_item_type','__mv__':typefloat},'color':{'__m__':'is_list_item_type','__mv__':typestr},'linestyle':{'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_item_limited_selection','__mv__1':linestyle}}
-        arrowrestdict={'width':{'__m__':'is_value_type','__mv__':typefloat},'headwidth':{'__m__':'is_value_type','__mv__':typefloat},'headlength':{'__m__':'is_value_type','__mv__':typefloat},'headaxislength':{'__m__':'is_value_type','__mv__':typefloat},'minshaft':{'__m__':'is_value_type','__mv__':typefloat},'minlength':{'__m__':'is_value_type','__mv__':typefloat}}
+        value_eqformat_res={'__m__':'is_format','__mv__':'(.+)=(.+?)$'}
+        value_float_res={'__m__':'is_value_type','__mv__':typefloat}
+        value_floatGTEQ0_res={'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0}
+        value_floatGT0_res={'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GT','__mv__1':0}
+        value_int_res={'__m__':'is_value_type','__mv__':typeint}
+        value_intGTEQ0_res={'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GTEQ','__mv__1':0}
+        value_intGTEQ0LTEQ1_res={'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0,'__m__2':'is_value_LTEQ','__mv__2':1}
+        value_intGT0_res={'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0}
+        list_bool_res={'__m__':'is_list_item_type','__mv__':typebool}
+        list_eqformat_res={'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_item_format','__mv__1':'(.+)=(.+?)$'}
+        list_float_res={'__m__':'is_list_item_type','__mv__':typefloat}
+        list_int_res={'__m__':'is_list_item_type','__mv__':typeint}
+        list_str_res={'__m__':'is_list_item_type','__mv__':typestr}
+        list_floatlen2_res={'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2}
+        list_linewidth_res={'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_item_value_GTEQ','__mv__1':0}
+        list_linestyle_res={'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_item_limited_selection','__mv__1':linestyle}
+        list_color_res={'__m__':'is_list_item_type','__mv__':typestr}
+        list_marker_res={'__m__':'is_list_item_limited_selection','__mv__':markerlistmod}
+        list_markersize_res={'__m__':'is_list_item_type','__mv__':typeint,'__m__1':'is_list_item_value_GTEQ','__mv__1':0}
+        minmax_res={'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2,'__m__2':'is_list_item_value_GTEQ','__mv__2':0,'__m__3':'is_list_item_value_LTEQ','__mv__3':1}
+        singlelinerestriction={'linewidth':value_float_res,'linestyle':{'__m__':'is_value_type','__mv__':typestr,'__m__1':'limited_selection','__mv__1':linestyle}}
+        linerestriction={'linewidth':list_linewidth_res,'color':list_color_res,'linestyle':list_linestyle_res}
+        arrowrestdict={'width':value_float_res,'headwidth':value_float_res,'headlength':value_float_res,'headaxislength':value_float_res,'minshaft':value_float_res,'minlength':value_float_res}
+        
+        
         msps={'Layout_Position_HV':{'__m__':'is_list_item_type','__mv__':typeint,'__m__1':'is_list_length','__mv__1':2,'__m__2':'is_list_item_value_GT','__mv__2':0}, 
               'Layout_Size_RowCol':{'__m__':'is_list_item_type','__mv__':typeint,'__m__1':'is_list_length','__mv__1':2,'__m__2':'is_list_item_value_GT','__mv__2':0}, 
-              'Plot_Title':{'Fontsize':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0}},  
+              'Plot_Title':{'Fontsize':value_intGT0_res},  
               'Plot_Type':{'__m__':'limited_selection','__mv__':plottypelist},
               'Axis_X': self.get_one_axis_struct_mask(),
               'Axis_Y': self.get_one_axis_struct_mask(),
@@ -241,26 +267,34 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
               'Projection':{'Type':{'__m__':'limited_selection','__mv__':projections}},
               #'Annotate':{'text':[''],'position':[]},
               'Grid':{'Grid_which':{'__m__':'limited_selection','__mv__':gridwlist},'Grid_axis':{'__m__':'limited_selection','__mv__':gridalist},'Line_format':singlelinerestriction},
-              'Colormap':{'Colormap_Type':{'__m__':'limited_selection','__mv__':cmlist},'Colormap_Range':{'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2},'Colormap_Label':{'Colormap_Position':{'__m__':'limited_selection','__mv__':colormapposlist},'Colormap_Label_align':{'__m__':'limited_selection','__mv__':colormaplabelalignlist}}},                            
-              'Plot_Legend':{'Box_anchor':{'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2},'Position':{'__m__':'limited_selection','__mv__':labelposlist},'Fontsize':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'title':{'__m__':'is_value_type','__mv__':typestr},'title_fontsize':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'framealpha':{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0,'__m__2':'is_value_LTEQ','__mv__2':1},'alignment':{'__m__':'limited_selection','__mv__':legendalignment},'ncols':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'mode':{'__m__':'limited_selection','__mv__':legendmode}},
-              'Lines':{'linewidth':{'__m__':'is_list_item_type','__mv__':typefloat},'color':{'__m__':'is_list_item_type','__mv__':typestr},'linestyle':{'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_item_limited_selection','__mv__1':linestyle},'dash_capstyle':{'__m__':'limited_selection','__mv__':dashcapstylist},'dash_joinstyle':{'__m__':'limited_selection','__mv__':dashjoinstylist}, 'drawstyle':{'__m__':'limited_selection','__mv__':drawstylelist},'Line_Marker':{'Marker_Type':{'__m__':'is_list_item_limited_selection','__mv__':markerlistmod},'Marker_Size':{'__m__':'is_list_item_type','__mv__':typeint},'markeredgecolor':{'__m__':'is_list_item_type','__mv__':typestr},'markeredgewidth':{'__m__':'is_list_item_type','__mv__':typefloat},'markerfacecolor':{'__m__':'is_list_item_type','__mv__':typestr},'markerfacecoloralt':{'__m__':'is_list_item_type','__mv__':typestr}}},
-              'Contour':{'value_Labels_size':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'Number_of_levels':{'__m__':'is_value_type','__mv__':typeint},'Use_specific_Values':False,'Use_values':{'__m__':'is_list_item_type','__mv__':typefloat},'Use_colors':{'__m__':'is_list_item_type','__mv__':typestr}},  
-              'Bar':{'Use_colors':{'__m__':'is_list_item_type','__mv__':typestr},'Bar_width':{'__m__':'is_value_GT','__mv__':0},'align':{'__m__':'limited_selection','__mv__':baralign}},
-              'Hist':{'bins':{'__m__':'is_list_item_type','__mv__':typeint},'bins2':{'__m__':'is_list_item_type','__mv__':typeint},'histtype':{'__m__':'limited_selection','__mv__':histtypelist},'hist_align':{'__m__':'limited_selection','__mv__':histalign},'orientation':{'__m__':'limited_selection','__mv__':historientation}},
-              'Quiver':{'angles':{'__m__':'limited_selection','__mv__':quiangles},'units':{'__m__':'limited_selection','__mv__':quiunits},'pivot':{'__m__':'limited_selection','__mv__':quipivot},'inverse_scale':{'__m__':'is_value_type','__mv__':typefloat},'scale_units':{'__m__':'limited_selection','__mv__':quiunits},'arrows':arrowrestdict},
-              'Barbs':{'length':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'pivot':{'__m__':'limited_selection','__mv__':barbpivot},'sizes':{'spacing':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GTEQ','__mv__1':0},'height':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GTEQ','__mv__1':0},'width' :{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GTEQ','__mv__1':0},'emptybarb':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GTEQ','__mv__1':0}},'fill_empty':False,'rounding':True,'barb_increments':{'half':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'full':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'flag':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0}},'flip_barb':{'__m__':'is_list_item_type','__mv__':typebool}},
-              'Stream':{'density_xy':{'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2},'linewidth':{'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_length','__mv__1':2,'__m__2':'is_list_item_format','__mv__2':'(.+)=(.+?)$'},'start_points':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'},'arrows':{'arrowstyle':{'__m__':'limited_selection','__mv__':Streamarrowstyle},'arrowsize':{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0}},'zorder':{'__m__':'is_value_type','__mv__':typeint},'minmaxlength':minmaxrest,'integration_direction':{'__m__':'limited_selection','__mv__':stream_intdir}},
-              'Eventplot':{'orientation':{'__m__':'limited_selection','__mv__':historientation}, 'lineoffsets':{'__m__':'is_list_item_type','__mv__':typefloat},'linelengths':{'__m__':'is_list_item_type','__mv__':typefloat}, 'linewidths':{'__m__':'is_list_item_type','__mv__':typefloat}, 'linestyles':{'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_item_limited_selection','__mv__1':linestyle},'colors':{'__m__':'is_list_item_type','__mv__':typestr}},
-              'Stackplot':{'baseline':{'__m__':'limited_selection','__mv__':stackbaseline},'colors':{'__m__':'is_list_item_type','__mv__':typestr}},
-              'Plot_Marker':{'Marker_Type':{'__m__':'limited_selection','__mv__':markerlistmod},'Marker_Size':{'__m__':'is_value_type','__mv__':typeint}},
-              'Stem':{'bottom':{'__m__':'is_value_type','__mv__':typefloat},'orientation':{'__m__':'limited_selection','__mv__':historientation}},
-              'Stairs':{'edges':{'__m__':'is_list_item_type','__mv__':typefloat},'orientation':{'__m__':'limited_selection','__mv__':historientation},'baseline':{'__m__':'is_list_item_type','__mv__':typefloat}},
-              'Pie':{ 'explode':{'__m__':'is_list_item_type','__mv__':typefloat},'colors':{'__m__':'is_list_item_type','__mv__':typestr}, 'autopct':{'__m__':'is_value_type','__mv__':typestr}, 'pctdistance':{'__m__':'is_value_type','__mv__':typefloat}, 'labeldistance':{'__m__':'is_value_type','__mv__':typefloat}, 'startangle':{'__m__':'is_value_type','__mv__':typefloat}, 'radius':{'__m__':'is_value_type','__mv__':typefloat}, 'wedgeprops':{"width":{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GT','__mv__1':0}, "linewidth": {'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0}, "edgecolor": {'__m__':'is_value_type','__mv__':typestr}}, 'textprops':{'Fontsize':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0}}, 'center':{'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2}}, 
-              'Violinplot':{'positions_key':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'}, 'widths':{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0}, 'points':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'quantiles':{'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_item_format','__mv__1':'(.+)=(.+?)$'}, 'bw_method':{'__m__':'limited_selection','__mv__':violinmethod}}, 
-              'Error_bars':{'Err_Y_Use_key':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'},'Err_X_Use_key':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'},'capsize':{'__m__':'is_value_type','__mv__':typeint,'__m__':'is_value_GTEQ','__mv__':0.0},'capthick':{'__m__':'is_value_type','__mv__':typefloat},'elinewidth':{'__m__':'is_value_type','__mv__':typefloat},'capsize':{'__m__':'is_value_type','__mv__':typefloat},'errorevery_X':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'errorevery_Y':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'lolims':{'__m__':'is_list_item_type','__mv__':typebool}, 'uplims':{'__m__':'is_list_item_type','__mv__':typebool}, 'xlolims':{'__m__':'is_list_item_type','__mv__':typebool}, 'xuplims':{'__m__':'is_list_item_type','__mv__':typebool}},# 'fmt':{'__m__':'limited_selection','__mv__':markerlistmod}
-              'Background':{'BG_Aspect':{'__m__':'is_value_type','__mv__':typeint,'__m__1':'is_value_GT','__mv__1':0},'BG_out_alpha':{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0,'__m__2':'is_value_LTEQ','__mv__2':1},'BG_in_alpha':{'__m__':'is_value_type','__mv__':typefloat,'__m__1':'is_value_GTEQ','__mv__1':0,'__m__2':'is_value_LTEQ','__mv__2':1}},
-              'Additional':{'Axis_U': self.get_one_axis_struct_mask(),'Axis_V': self.get_one_axis_struct_mask(),'Axis_W': self.get_one_axis_struct_mask(),'math_declarations':{'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_item_format','__mv__1':'(.+)=(.+?)$'},'math_definitions':{'__m__':'is_format','__mv__':'([a-zA-Z_].*=.+)(|[a-zA-Z_].*=.+)*'}},
-              'Reference_Lines':{'Horizontal':{'Y_points':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'},'X_Min_Max':minmaxrest,'Line_format':linerestriction},'Vertical':{'X_points':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'},'Y_Min_Max':minmaxrest,'Line_format':linerestriction},'Radial':{'ini_angle':{'__m__':'is_value_type','__mv__':typefloat},'Equi_points':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'},'Ang_Min_Max':minmaxrest,'Center_coord':{'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':3},'Line_format':linerestriction},'Angular':{'Angles':{'__m__':'is_format','__mv__':'(.+)=(.+?)$'},'R_Min_Max':minmaxrest,'Line_format':linerestriction}}
+              'Colormap':{'Colormap_Type':{'__m__':'limited_selection','__mv__':cmlist},'Colormap_Range':list_floatlen2_res,'Colormap_Label':{'Colormap_Position':{'__m__':'limited_selection','__mv__':colormapposlist},'Colormap_Label_align':{'__m__':'limited_selection','__mv__':colormaplabelalignlist}}},                            
+              'Plot_Legend':{'Box_anchor':list_floatlen2_res,'Position':{'__m__':'limited_selection','__mv__':labelposlist},'Fontsize':value_intGT0_res,'title':{'__m__':'is_value_type','__mv__':typestr},'title_fontsize':value_intGT0_res,'framealpha':value_intGTEQ0LTEQ1_res,'alignment':{'__m__':'limited_selection','__mv__':legendalignment},'ncols':value_intGT0_res,'mode':{'__m__':'limited_selection','__mv__':legendmode}},
+              'Lines':{'linewidth':list_linewidth_res,'color':list_color_res,'linestyle':list_linestyle_res,'dash_capstyle':{'__m__':'limited_selection','__mv__':dashcapstylist},'dash_joinstyle':{'__m__':'limited_selection','__mv__':dashjoinstylist}, 'drawstyle':{'__m__':'limited_selection','__mv__':drawstylelist},'Line_Marker':{'Marker_Type':list_marker_res,'Marker_Size':list_int_res,'markeredgecolor':list_color_res,'markeredgewidth':list_float_res,'markerfacecolor':list_color_res,'markerfacecoloralt':list_color_res}},
+              'Contour':{'value_Labels_size':value_intGT0_res,'Number_of_levels':value_int_res,'Use_specific_Values':False,'Use_values':list_float_res,'Use_colors':list_color_res},  
+              'Bar':{'Use_colors':list_color_res,'Bar_width':{'__m__':'is_value_GT','__mv__':0},'align':{'__m__':'limited_selection','__mv__':baralign}},
+              'Hist':{'bins':list_int_res,'bins2':list_int_res,'histtype':{'__m__':'limited_selection','__mv__':histtypelist},'hist_align':{'__m__':'limited_selection','__mv__':histalign},'orientation':{'__m__':'limited_selection','__mv__':historientation}},
+              'Quiver':{'angles':{'__m__':'limited_selection','__mv__':quiangles},'units':{'__m__':'limited_selection','__mv__':quiunits},'pivot':{'__m__':'limited_selection','__mv__':quipivot},'inverse_scale':value_float_res,'scale_units':{'__m__':'limited_selection','__mv__':quiunits},'arrows':arrowrestdict},
+              'Barbs':{'length':value_intGT0_res,'pivot':{'__m__':'limited_selection','__mv__':barbpivot},'sizes':{'spacing':value_intGTEQ0_res,'height':value_intGTEQ0_res,'width' :value_intGTEQ0_res,'emptybarb':value_intGTEQ0_res},'fill_empty':False,'rounding':True,'barb_increments':{'half':value_intGT0_res,'full':value_intGT0_res,'flag':value_intGT0_res},'flip_barb':list_bool_res},
+              'Stream':{'density_xy':list_floatlen2_res,'linewidth':{'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_length','__mv__1':2,'__m__2':'is_list_item_format','__mv__2':'(.+)=(.+?)$'},'start_points':value_eqformat_res,'arrows':{'arrowstyle':{'__m__':'limited_selection','__mv__':Streamarrowstyle},'arrowsize':value_floatGTEQ0_res},'zorder':value_int_res,'minmaxlength':minmax_res,'integration_direction':{'__m__':'limited_selection','__mv__':stream_intdir}},
+              'Eventplot':{'orientation':{'__m__':'limited_selection','__mv__':historientation}, 'lineoffsets':list_float_res,'linelengths':list_float_res, 'linewidths':list_linewidth_res, 'linestyles':{'__m__':'is_list_item_type','__mv__':typestr,'__m__1':'is_list_item_limited_selection','__mv__1':linestyle},'colors':list_color_res},
+              'Stackplot':{'baseline':{'__m__':'limited_selection','__mv__':stackbaseline},'colors':list_color_res},
+              'Plot_Marker':{'Marker_Type':{'__m__':'limited_selection','__mv__':markerlistmod},'Marker_Size':value_int_res},
+              'Stem':{'bottom':value_float_res,'orientation':{'__m__':'limited_selection','__mv__':historientation}},
+              'Stairs':{'edges':list_float_res,'orientation':{'__m__':'limited_selection','__mv__':historientation},'baseline':list_float_res},
+              'Pie':{ 'explode':list_float_res,'colors':list_color_res, 'autopct':{'__m__':'is_value_type','__mv__':typestr}, 'pctdistance':value_float_res, 'labeldistance':value_float_res, 'startangle':value_float_res, 'radius':value_float_res, 'wedgeprops':{"width":value_floatGT0_res, "linewidth": value_floatGT0_res, "edgecolor": {'__m__':'is_value_type','__mv__':typestr}}, 'textprops':{'Fontsize':value_intGT0_res}, 'center':list_floatlen2_res}, 
+              'Violinplot':{'positions_key':value_eqformat_res, 'widths':value_floatGTEQ0_res, 'points':value_intGT0_res,'quantiles':list_eqformat_res, 'bw_method':{'__m__':'limited_selection','__mv__':violinmethod},'bw_method_KDE':value_float_res}, 
+              'Boxplot':{'positions':list_float_res, 'widths':list_float_res, 'orientation':{'__m__':'limited_selection','__mv__':historientation}, 'whis':{'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':2,'__m__2':'is_list_item_value_GTEQ','__mv__2':0,'__m__3':'is_list_item_value_LTEQ','__mv__3':100}, 'bootstrap':value_int_res, 'usermedians':list_str_res, 'conf_intervals':list_str_res, 'zorder':value_float_res, 
+                        'boxprops':{'color':list_color_res,'linestyle':list_linestyle_res,'linewidth':list_linewidth_res}, 
+                        'flierprops': {'marker':list_marker_res, 'markerfacecolor':list_color_res, 'markersize':list_markersize_res, 'linestyle':list_linestyle_res, 'markeredgecolor':list_color_res,'linewidth':list_linewidth_res}, 
+                        'medianprops':{'color':list_color_res,'linestyle':list_linestyle_res,'linewidth':list_linewidth_res}, 
+                        'meanprops':{'color':list_color_res,'marker':list_marker_res,'markerfacecolor':list_color_res,'markeredgecolor':list_color_res,'markersize':list_markersize_res,'linestyle':list_linestyle_res,'linewidth':list_linewidth_res}, 
+                        'capprops':{'color':list_color_res,'capwidths':list_float_res,'linestyle':list_linestyle_res,'linewidth':list_linewidth_res}, 
+                        'whiskerprops':{'color':list_color_res,'linestyle':list_linestyle_res,'linewidth':list_linewidth_res}},
+            
+              'Error_bars':{'Err_Y_Use_key':value_eqformat_res,'Err_X_Use_key':value_eqformat_res,'capsize':{'__m__':'is_value_type','__mv__':typeint,'__m__':'is_value_GTEQ','__mv__':0.0},'capthick':value_float_res,'elinewidth':value_float_res,'capsize':value_float_res,'errorevery_X':value_intGT0_res,'errorevery_Y':value_intGT0_res,'lolims':list_bool_res, 'uplims':list_bool_res, 'xlolims':list_bool_res, 'xuplims':list_bool_res},# 'fmt':{'__m__':'limited_selection','__mv__':markerlistmod}
+              'Background':{'BG_Aspect':value_intGT0_res,'BG_out_alpha':value_intGTEQ0LTEQ1_res,'BG_in_alpha':value_intGTEQ0LTEQ1_res},
+              'Additional':{'Axis_U': self.get_one_axis_struct_mask(),'Axis_V': self.get_one_axis_struct_mask(),'Axis_W': self.get_one_axis_struct_mask(),'math_declarations':list_eqformat_res,'math_definitions':{'__m__':'is_format','__mv__':'([a-zA-Z_].*=.+)(|[a-zA-Z_].*=.+)*'}},
+              'Reference_Lines':{'Horizontal':{'Y_points':value_eqformat_res,'X_Min_Max':minmax_res,'Line_format':linerestriction},'Vertical':{'X_points':value_eqformat_res,'Y_Min_Max':minmax_res,'Line_format':linerestriction},'Radial':{'ini_angle':value_float_res,'Equi_points':value_eqformat_res,'Ang_Min_Max':minmax_res,'Center_coord':{'__m__':'is_list_item_type','__mv__':typefloat,'__m__1':'is_list_length','__mv__1':3},'Line_format':linerestriction},'Angular':{'Angles':value_eqformat_res,'R_Min_Max':minmax_res,'Line_format':linerestriction}}
               }
         return msps
 
@@ -883,27 +917,33 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
         else:
             filename=afn
         if filename!=None:
-            path=self.extract_path(filename)
-            aDialog.set_default_dir(path)
             try:                
                 with open(filename) as f:
                     data = f.read()            
                 #print("Data type before reconstruction : ", type(data))                
                 # reconstructing the data as a dictionary
-                js = json.loads(data)     
-                self.close_dialogs()       
+                f.close()
+                log.info("before json loads")
+                js = json.loads(data)   
+                log.info("before close dialogs")  
+                self.close_dialogs()     
+                log.info("after close dialogs")  
                 #print("Data type after reconstruction : ", type(js))
                 #print(js)
                 log.info("Loaded File:"+filename)
-                #self.plots_struct=js                
+                #self.plots_struct=js             
                 self.plots_struct=self.Add_missing_dictionaries(js)
-                self.close_dialogs()
+                #self.close_dialogs()
                 self.refresh_Treeview()
                 self.last_opened['last_opened_json']=filename
                 self.plot_structure_changed(False)
                 self.set_last_opened_yml_file()
+
+                #set default path
+                path=self.extract_path(filename)
+                aDialog.set_default_dir(path)
             except Exception as e:
-                log.error("Json File :"+filename+ ' can not be opened')
+                log.error('Json File: {} can not be opened'.format(filename))
                 log.error(e)
     
     def Load_Append_Plot_Struct_json(self,afn=None):  
@@ -919,6 +959,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
                     data = f.read()            
                 #print("Data type before reconstruction : ", type(data))                
                 # reconstructing the data as a dictionary
+                f.close()
                 js = json.loads(data)            
                 #print("Data type after reconstruction : ", type(js))
                 #print(js)
@@ -960,7 +1001,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
 
     def Add_missing_dictionaries(self,inc_struct):        
         newstruct=[]
-        astruct=inc_struct.copy()
+        astruct=self.recursive_copy_dict(inc_struct)
         for adict in astruct:
             sss=self.get_one_plot_struct('__Sample__')        
             baseplot=sss['Plots']['P1']
@@ -1493,10 +1534,11 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
     
     def close_dialogs(self):
         #Close dialogs
-        for id_d in self.open_Dialogs:
+        diaglist=self.open_Dialogs.copy()
+        for id_d in diaglist:
             try:                
-                dialog=self.open_Dialogs[id_d]
-                dialog.quit()                               
+                self.close_a_dialog(id_d)
+                self.unlist_a_dialog(id_d)                            
             except Exception as e:
                 #log.error(e)     
                 pass  
@@ -1516,7 +1558,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
 
     def close_a_dialog(self,id_close):
         #Close dialogs
-        diaglist=self.open_Dialogs
+        diaglist=self.open_Dialogs.copy()
         for id_d in diaglist:
             if id_d==id_close:
                 try:                
