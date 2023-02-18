@@ -119,7 +119,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         self.tvf.Plot_struct=self.Plot_struct
         #self.tvf.Plot_struct=self.Plot_dict
         self.tvf.set_show_dict()
-        print('passed set_show_dict')
+        #print('passed set_show_dict')
         self.tvf.refresh_Treeview(self.tvf.Show_dict,self.tvf.modelobj,self.tvf.treeviewobj)  
         self.modelobj=self.tvf.modelobj  
         self.treeviewobj=self.tvf.treeviewobj
@@ -1012,8 +1012,53 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         except Exception as e:
             log.error('Getting annotation labels for axis {}:{}'.format(axisname,e))
         return xannolabels, x_annotate
+    
+    def get_likeeventplot_info_(self,dfxyz,dfuvw,axis_info,plinfo,Add_axis_info):
+        xxx,yyy,zzz,bbb,zeros=self.get_vectors_separated(dfxyz)
+        uuu,vvv,www,bbb2,_=self.get_vectors_separated(dfuvw)             
+        doplot=False 
+        ccc=[] 
+        vectors=[]
+        vectornames=['x','y','z','u','v','w']
+        usedaxis=[]
+        y_sv=[] 
+        x_sv=[]
+        all_sv=[]
+        for iii in range(0,6):
+            jjj=numpy.fmod(iii, 3)+1 #count 1 to 3
+            if iii<3:    
+                _V1=self.get_var_axis_info_(jjj,axis_info,[xxx,yyy,zzz])                     
+                if type(_V1)!=type(None) and self.is_all_NaN_values(_V1)==False:
+                    vectors.append(_V1)
+                    ccc.append(iii+1)                        
+                    plinfo.update({vectornames[iii]:_V1})
+                    usedaxis.append(vectornames[iii])   
+                    if numpy.NaN in _V1:
+                        log.warning('nan values found in vector {} Replacing with 0'.format(vectornames[iii]))
+                        _V1=self.replace_in_moded(numpy.NaN,0,_V1)
+                    if vectornames[iii]=='x':
+                        x_sv=_V1 
+                    else:                            
+                        y_sv.append(_V1)
+                    all_sv.append(_V1)
+                        
+            else:
+                _V5=self.get_var_axis_info_(jjj,Add_axis_info,[uuu,vvv,www])         
+                vn=self.get_var_axis_info_(jjj,Add_axis_info,['u','v','w'])
+                if type(_V5)!=type(None) and self.is_all_NaN_values(_V5)==False:
+                    vectors.append(_V5)
+                    ccc.append(iii+1)
+                    plinfo.update({vn:_V5})
+                    usedaxis.append(vn)
+                    if numpy.NaN in _V5:
+                        log.warning('nan values found in vector {} Replacing with 0'.format(vn))
+                        _V5=self.replace_in_moded(numpy.NaN,0,_V5)
+                    y_sv.append(_V5)
+                    all_sv.append(_V5)
+        return doplot,xxx,yyy,zzz,uuu,vvv,www,ccc,vectors,vectornames,usedaxis,y_sv,x_sv,all_sv,plinfo,bbb,zeros,bbb2
 
-    def do_a_Event_plot(self,ax,Plotinfo):        
+    def do_a_Violin_plot(self,ax,Plotinfo):     
+        # stack, stairs, event, violin, pie   
         plinfo=self.get_plotted_info(Plotinfo) 
         plotok=True
         dfxyz=Plotinfo['dfxyz']
@@ -1024,35 +1069,6 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         axis_info=Plotinfo['axis_info']
         Add_axis_info=Plotinfo['Add_axis_info']
              
-        stack_baseline=Plotinfo['stack_baseline']
-        stack_colors=Plotinfo['stack_colors']
-        stairs_baseline=Plotinfo['stairs_baseline']
-        stairs_fill=Plotinfo['stairs_fill']
-        stairs_orientation=Plotinfo['stairs_orientation']
-        stairs_edges=Plotinfo['stairs_edges']
-        stairs_Use_Lines_style=Plotinfo['stairs_Use_Lines_style']
-        event_orientation=Plotinfo['event_orientation']
-        event_lineoffsets=Plotinfo['event_lineoffsets']
-        event_linelengths=Plotinfo['event_linelengths']
-        event_linewidths=Plotinfo['event_linewidths']
-        event_colors=Plotinfo['event_colors']
-        event_linestyles=Plotinfo['event_linestyles']
-        pie_explode=Plotinfo['pie_explode']
-        pie_colors=Plotinfo['pie_colors']
-        pie_autopct=Plotinfo['pie_autopct']
-        pie_pctdistance=Plotinfo['pie_pctdistance']
-        pie_shadow=Plotinfo['pie_shadow']
-        pie_labeldistance=Plotinfo['pie_labeldistance']
-        pie_radius=Plotinfo['pie_radius']
-        pie_startangle=Plotinfo['pie_startangle']
-        pie_counterclock=Plotinfo['pie_counterclock']
-        pie_textprops=Plotinfo['pie_textprops']
-        pie_center=Plotinfo['pie_center']
-        pie_frame=Plotinfo['pie_frame']
-        pie_rotatelabels=Plotinfo['pie_rotatelabels']
-        pie_normalize=Plotinfo['pie_normalize']
-        pie_wedgeprops=Plotinfo['pie_wedgeprops']
-
         violin_positions_key=Plotinfo['violin_positions_key']
         violin_vert=Plotinfo['violin_vert']
         violin_widths=Plotinfo['violin_widths']
@@ -1062,6 +1078,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         violin_quantiles=Plotinfo['violin_quantiles']
         violin_points=Plotinfo['violin_points']
         violin_bw_method=Plotinfo['violin_bw_method']
+        violin_bw_method_KDE=Plotinfo['violin_bw_method_KDE']
 
         log.info('{} starting {} {}D as {}{}'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'], plot_Dim,axis_info,Add_axis_info))
         #reset the labels for this plot        
@@ -1076,48 +1093,9 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
 
         doplot=False
         try:            
-            xxx,yyy,zzz,bbb,zeros=self.get_vectors_separated(dfxyz)
-            uuu,vvv,www,bbb2,_=self.get_vectors_separated(dfuvw)             
-            doplot=False 
-            ccc=[] 
-            vectors=[]
-            vectornames=['x','y','z','u','v','w']
-            usedaxis=[]
-            y_sv=[] 
-            x_sv=[]
-            all_sv=[]
-            for iii in range(0,6):
-                jjj=numpy.fmod(iii, 3)+1 #count 1 to 3
-                if iii<3:    
-                    _V1=self.get_var_axis_info_(jjj,axis_info,[xxx,yyy,zzz])                     
-                    if type(_V1)!=type(None) and self.is_all_NaN_values(_V1)==False:
-                        vectors.append(_V1)
-                        ccc.append(iii+1)                        
-                        plinfo.update({vectornames[iii]:_V1})
-                        usedaxis.append(vectornames[iii])   
-                        if numpy.NaN in _V1:
-                            log.warning('nan values found in vector {} Replacing with 0'.format(vectornames[iii]))
-                            _V1=self.replace_in_moded(numpy.NaN,0,_V1)
-                        if vectornames[iii]=='x':
-                            x_sv=_V1 
-                        else:                            
-                            y_sv.append(_V1)
-                        all_sv.append(_V1)
-                            
-                else:
-                    _V5=self.get_var_axis_info_(jjj,Add_axis_info,[uuu,vvv,www])         
-                    vn=self.get_var_axis_info_(jjj,Add_axis_info,['u','v','w'])
-                    if type(_V5)!=type(None) and self.is_all_NaN_values(_V5)==False:
-                        vectors.append(_V5)
-                        ccc.append(iii+1)
-                        plinfo.update({vn:_V5})
-                        usedaxis.append(vn)
-                        if numpy.NaN in _V5:
-                            log.warning('nan values found in vector {} Replacing with 0'.format(vn))
-                            _V5=self.replace_in_moded(numpy.NaN,0,_V5)
-                        y_sv.append(_V5)
-                        all_sv.append(_V5)
-            #log.info('{} {} {}'.format(len(x_sv),len(xxx),len(dfxyz)))           
+            #get all info
+            doplot,xxx,yyy,zzz,uuu,vvv,www,ccc,vectors,vectornames,usedaxis,y_sv,x_sv,all_sv,plinfo,_,_,_=self.get_likeeventplot_info_(dfxyz,dfuvw,axis_info,plinfo,Add_axis_info)
+                      
             lenv=len(ccc)    
             log.info('{} using the following axis to plot: {}'.format(Plotinfo['Plot_Type'],usedaxis))
             if plot_Dim==0 or lenv==0:
@@ -1136,7 +1114,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                     for uaxis in usedaxis:
                         legends.append(labeldict[uaxis]['Label_Text'])
                     
-                    #get quantiles
+                    #get quantiles                    
                     if self.is_list(violin_quantiles)==True: 
                         #log.info('Entered list')
                         violin_quantileslist=self.get_moded_property(usedaxis,violin_quantiles)
@@ -1163,9 +1141,17 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                             else:
                                 ev_quan=[]
                             v_quan.append(ev_quan)
-                        v_quan=self.MNmat_toMNarray(v_quan)
+                        try:
+                            v_quan=self.MNmat_toMNarray(v_quan)
+                            if v_quan.size<=0:
+                                v_quan=None
+                            log.info('Found quantiles: {}'.format(v_quan))
+                        except:
+                            v_quan=None
+                            log.info('No quantiles Found')
                     else:
                         v_quan=None
+                        log.info('No quantiles Found')
                     #log.info('test got quantiles {}'.format(v_quan))
                     
                     #get positions
@@ -1183,6 +1169,9 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                             v_pos=None
                     else:
                         v_pos=None
+                    if violin_bw_method_KDE>0:                     
+                        violin_bw_method=violin_bw_method_KDE
+                    log.info('Using bw_method={}. Set bw_method_KDE>0 to use KDE.'.format(violin_bw_method))
                     plinfo.update({'quantiles':v_quan})
                     plinfo.update({'positions':v_pos})
                     dataset=self.MNmat_toMNarray(all_sv)
@@ -1201,7 +1190,684 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                     if violin_vert==False:
                         Plotinfo=self.exchange_labels_ticks_X_Y(Plotinfo)
                     plotok=True
+
+                self.set_legends_title(ax,Plotinfo) 
+                self.set_axis_ticks(ax,Plotinfo)                      
+
+        except Exception as e:
+            log.error('Making {} plot'.format(Plotinfo['Plot_Type']))
+            log.error(e)
+            self.log_Exception()
+            plotok=False  
+        return plotok,plinfo,ax,Plotinfo
+    
+    def do_a_Box_plot(self,ax,Plotinfo):     
+        # stack, stairs, event, violin, pie   
+        plinfo=self.get_plotted_info(Plotinfo) 
+        plotok=True
+        dfxyz=Plotinfo['dfxyz']
+        dfuvw=Plotinfo['dfuvw']        
+        plot_Dim=Plotinfo['plot_Dim']
+        Add_plot_Dim=Plotinfo['Add_plot_Dim']
+        plot_Dim=plot_Dim+Add_plot_Dim
+        axis_info=Plotinfo['axis_info']
+        Add_axis_info=Plotinfo['Add_axis_info']
+
+
+        boxplot_positions=Plotinfo['boxplot_positions']
+        boxplot_widths=Plotinfo['boxplot_widths']
+        boxplot_notch=Plotinfo['boxplot_notch']
+        boxplot_sym=Plotinfo['boxplot_sym']
+        boxplot_orientation=Plotinfo['boxplot_orientation']
+        boxplot_whis=Plotinfo['boxplot_whis']
+        boxplot_bootstrap=Plotinfo['boxplot_bootstrap']
+        boxplot_usermedians=Plotinfo['boxplot_usermedians']
+        boxplot_patch_artist=Plotinfo['boxplot_patch_artist']
+        boxplot_conf_intervals=Plotinfo['boxplot_conf_intervals']
+        boxplot_meanline=Plotinfo['boxplot_meanline']
+        boxplot_showmeans=Plotinfo['boxplot_showmeans']
+        boxplot_showcaps=Plotinfo['boxplot_showcaps']
+        boxplot_showbox=Plotinfo['boxplot_showbox']
+        boxplot_showfliers=Plotinfo['boxplot_showfliers']
+        boxplot_manage_ticks=Plotinfo['boxplot_manage_ticks']
+        boxplot_autorange=Plotinfo['boxplot_autorange']
+        boxplot_zorder=Plotinfo['boxplot_zorder']
+        boxplot_boxprops_color=Plotinfo['boxplot_boxprops_color']
+        boxplot_boxprops_linestyle=Plotinfo['boxplot_boxprops_linestyle']
+        boxplot_boxprops_linewidth=Plotinfo['boxplot_boxprops_linewidth']
+        boxplot_medianprops_color=Plotinfo['boxplot_medianprops_color']
+        boxplot_medianprops_linestyle=Plotinfo['boxplot_medianprops_linestyle']
+        boxplot_medianprops_linewidth=Plotinfo['boxplot_medianprops_linewidth']
+
+        boxplot_flierprops_marker=Plotinfo['boxplot_flierprops_marker']
+        boxplot_flierprops_markerfacecolor=Plotinfo['boxplot_flierprops_markerfacecolor']
+        boxplot_flierprops_markersize=Plotinfo['boxplot_flierprops_markersize']
+        boxplot_flierprops_linestyle=Plotinfo['boxplot_flierprops_linestyle']
+        boxplot_flierprops_markeredgecolor=Plotinfo['boxplot_flierprops_markeredgecolor']
+        boxplot_flierprops_linewidth=Plotinfo['boxplot_flierprops_linewidth']
+        
+        boxplot_meanprops_marker=Plotinfo['boxplot_meanprops_marker']
+        boxplot_meanprops_markerfacecolor=Plotinfo['boxplot_meanprops_markerfacecolor']
+        boxplot_meanprops_markersize=Plotinfo['boxplot_meanprops_markersize']
+        boxplot_meanprops_linestyle=Plotinfo['boxplot_meanprops_linestyle']
+        boxplot_meanprops_markeredgecolor=Plotinfo['boxplot_meanprops_markeredgecolor']
+        boxplot_meanprops_linewidth=Plotinfo['boxplot_meanprops_linewidth']
+        boxplot_meanprops_color=Plotinfo['boxplot_meanprops_color']
+
+        boxplot_capprops_capwidths=Plotinfo['boxplot_capprops_capwidths']
+        #boxplot_capprops_capsize=Plotinfo['boxplot_capprops_capsize']
+        boxplot_capprops_color=Plotinfo['boxplot_capprops_color']
+        boxplot_capprops_linestyle=Plotinfo['boxplot_capprops_linestyle']
+        boxplot_capprops_linewidth=Plotinfo['boxplot_capprops_linewidth']
+        
+        
+        boxplot_whiskerprops_color=Plotinfo['boxplot_whiskerprops_color']
+        boxplot_whiskerprops_linestyle=Plotinfo['boxplot_whiskerprops_linestyle']
+        boxplot_whiskerprops_linewidth=Plotinfo['boxplot_whiskerprops_linewidth']
+
+
+        log.info('{} starting {} {}D as {}{}'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'], plot_Dim,axis_info,Add_axis_info))
+        #reset the labels for this plot        
+        ppp=self.Plot_dict[Plotinfo['me_plot']]
+        xlab=ppp['Axis_X']['Axis_Label']
+        ylab=ppp['Axis_Y']['Axis_Label']
+        zlab=ppp['Axis_Z']['Axis_Label']
+        ulab=ppp['Additional']['Axis_U']['Axis_Label']
+        vlab=ppp['Additional']['Axis_V']['Axis_Label']
+        wlab=ppp['Additional']['Axis_W']['Axis_Label']
+        labeldict={'x':xlab,'y':ylab,'z':zlab,'u':ulab,'v':vlab,'w':wlab}
+
+        doplot=False
+        try:            
+            if boxplot_orientation=='vertical':
+                boxplot_vert=True
+            else:
+                boxplot_vert=False
+
+            min_whis=min(boxplot_whis)
+            max_whis=max(boxplot_whis)
+            if min_whis==max_whis and boxplot_autorange==False:
+                b_whis=None
+            else:
+                b_whis=(min_whis,max_whis)
+
+            #get all info
+            doplot,xxx,yyy,zzz,uuu,vvv,www,ccc,vectors,vectornames,usedaxis,y_sv,x_sv,all_sv,plinfo,_,_,_=self.get_likeeventplot_info_(dfxyz,dfuvw,axis_info,plinfo,Add_axis_info)
+                      
+            lenv=len(ccc)    
+            log.info('{} using the following axis to plot: {}'.format(Plotinfo['Plot_Type'],usedaxis))
+            if plot_Dim==0 or lenv==0:
+                doplot=False
+                log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type']))                                                                                                              
+            else:
+                doplot=True
+
+            if doplot==True:                  
+                plotok=False   
+                if Plotinfo['Plot_Type']=='boxplot':
+                    legends=[]
+                    for uaxis in usedaxis:
+                        legends.append(labeldict[uaxis]['Label_Text'])
+                    
+                    vectx2=[] #double size 2 caps per box
+                    for aaa in usedaxis:
+                        vectx2.append(aaa) 
+                        vectx2.append(aaa)
+                    
+                    #get positions and widths
+                    b_pos=self.get_selected_list_moded(boxplot_positions)
+                    if self.is_list(b_pos)==True: 
+                        b_pos=self.getsized_property(usedaxis,b_pos)
+                    else:
+                        b_pos=None
+                    b_wit=self.get_selected_list_moded(boxplot_widths)
+                    if self.is_list(b_wit)==True: 
+                        b_wit=self.getsized_property(usedaxis,b_wit)
+                    else:
+                        try:
+                            if b_wit<=0:
+                                b_wit=None
+                        except:
+                            b_wit=None
+                    #get usermedians
+                    u_medianslist=[]                    
+                    for iii,_ in enumerate(usedaxis):
+                        try:
+                            val=float(boxplot_usermedians[iii])
+                            u_medianslist.append(val)
+                        except:
+                            u_medianslist.append(None)
+                    if self.is_all_None_values(u_medianslist)==True:
+                        b_umedians=None
+                    else:
+                        b_umedians=u_medianslist
+                    
+                    #get conf_intervals
+                    confint1=[]  
+                    confint2=[]  
+                    confint=[]               
+                    for iii,_ in enumerate(usedaxis):
+                        try:
+                            jjj=2*iii
+                            val1=float(boxplot_conf_intervals[jjj])
+                            confint1.append(val1)
+                            val2=float(boxplot_conf_intervals[jjj+1])
+                            confint2.append(val2)
+                            confint.append([val1,val2])
+                        except:
+                            confint1.append(None)
+                            confint2.append(None)
+                            confint.append([None,None])
+                    if self.is_all_None_values(confint1)==True and self.is_all_None_values(confint2)==True:
+                        b_conf_intervals=None
+                    else:
+                        b_conf_intervals=confint
+                    '''
+                    if boxplot_usermedians not in [None,'','none','None']:
+                        try:
+                            b_df=self.eval_data_into_a_df(boxplot_usermedians,logshow=True,use_filtered=True)
+                            b_usermedians=numpy.asarray(b_df)
+                            if len(b_usermedians)!=len(x_sv):
+                                b_usermedians,_,_=self.get_error_dxyzsized(b_usermedians,boxplot_usermedians,Plotinfo)
+                                b_umedians=numpy.asarray(b_usermedians)
+                            else:
+                                b_umedians=b_usermedians
+                        except Exception as e:
+                            log.warning('Boxplot usermedians variable {} was not evaluated found error: {}'.format(boxplot_usermedians,e))
+                            b_umedians=None
+                    else:
+                        b_umedians=None
+                    
+                    
+                    #get conf_intervals
+                    for confinterval in boxplot_conf_intervals:
+                        iii=0
+                        if confinterval not in [None,'','none','None']:
+                            try:
+                                c_df=self.eval_data_into_a_df(confinterval,logshow=True,use_filtered=True)
+                                b_confinterval=numpy.asarray(c_df)
+                                if len(b_confinterval)!=len(x_sv):
+                                    b_confinterval,_,_=self.get_error_dxyzsized(b_confinterval,confinterval,Plotinfo)                                    
+                                if iii==0:
+                                    b_c=[]
+                                if self.is_list(b_c):
+                                    b_c.append(numpy.asarray(b_confinterval))
+                                    iii=iii+1
+                            except Exception as e:
+                                log.warning('Boxplot widths variable {} was not evaluated found error: {}'.format(boxplot_widths,e))
+                                b_c=None
+                        else:
+                            b_c=None
+                    if self.is_list(b_c) and boxplot_notch==True:
+                        b_conf_intervals=self.MNmat_toMNarray(b_c) 
+                    elif self.is_list(b_c) and boxplot_notch==False:
+                        b_conf_intervals=self.MNmat_toMNarray(b_c)
+                        log.warning('Boxplot notch must be True to draw conf intervals')
+                    else: 
+                        b_conf_intervals=None  
+                    '''
+                    plinfo.update({'conf_intervals':b_conf_intervals})
+                    plinfo.update({'usermedians':b_umedians})
+                    
+                    #boxplot properties:
+                    #------------------                    
+                    bp_colors=[]
+                    for iii,bp_c in enumerate(boxplot_boxprops_color):
+                        thecolor=self.get_a_color(iii,Plotinfo,'boxplot_boxprops_color') 
+                        bp_colors.append(thecolor)                                   
+                    if len(bp_colors)>0: 
+                        bp_colors=self.getsized_property(usedaxis,bp_colors)
+                        boxplot_boxprops=None 
+                    else:
+                        boxplot_boxprops=None 
+                    bp_linewidth=[]
+                    for iii,bp_c in enumerate(boxplot_boxprops_linewidth):
+                        thecolor=self.get_line_width(iii,Plotinfo,'boxplot_boxprops_linewidth') 
+                        bp_linewidth.append(thecolor)                                    
+                    if len(bp_linewidth)>0: 
+                        bp_linewidth=self.getsized_property(usedaxis,bp_linewidth) 
+                    bp_linestyle=[]
+                    for iii,bp_c in enumerate(boxplot_boxprops_linestyle):
+                        thecolor=self.get_line_style(iii,Plotinfo,'boxplot_boxprops_linestyle') 
+                        bp_linestyle.append(thecolor)                                   
+                    if len(bp_linestyle)>0: 
+                        bp_linestyle=self.getsized_property(usedaxis,bp_linestyle)                        
+                    #------------------    
+                    mep_colors=[]
+                    for iii,mep_c in enumerate(boxplot_medianprops_color):
+                        thecolor=self.get_a_color(iii,Plotinfo,'boxplot_medianprops_color') 
+                        mep_colors.append(thecolor)                                   
+                    if len(mep_colors)>0: 
+                        mep_colors=self.getsized_property(usedaxis,mep_colors)
+                        boxplot_medianprops=None 
+                    else:
+                        boxplot_medianprops=None                     
+                    mep_linewidth=[]
+                    for iii,mep_c in enumerate(boxplot_medianprops_linewidth):
+                        thecolor=self.get_line_width(iii,Plotinfo,'boxplot_medianprops_linewidth') 
+                        mep_linewidth.append(thecolor)                                    
+                    if len(mep_linewidth)>0: 
+                        mep_linewidth=self.getsized_property(usedaxis,mep_linewidth) 
+                    mep_linestyle=[]
+                    for iii,mep_c in enumerate(boxplot_medianprops_linestyle):
+                        thecolor=self.get_line_style(iii,Plotinfo,'boxplot_medianprops_linestyle') 
+                        mep_linestyle.append(thecolor)                                   
+                    if len(mep_linestyle)>0: 
+                        mep_linestyle=self.getsized_property(usedaxis,mep_linestyle)
+                    #------------------
+                    whip_colors=[]
+                    for iii,whip_c in enumerate(boxplot_whiskerprops_color):
+                        thecolor=self.get_a_color(iii,Plotinfo,'boxplot_whiskerprops_color') 
+                        whip_colors.append(thecolor)                                   
+                    if len(whip_colors)>0: 
+                        whip_colors=self.getsized_property(vectx2,whip_colors)
+                        boxplot_whiskerprops=None 
+                    else:
+                        boxplot_whiskerprops=None
+                    whip_linewidth=[]
+                    for iii,whip_c in enumerate(boxplot_whiskerprops_linewidth):
+                        thecolor=self.get_line_width(iii,Plotinfo,'boxplot_whiskerprops_linewidth') 
+                        whip_linewidth.append(thecolor)                                    
+                    if len(whip_linewidth)>0: 
+                        whip_linewidth=self.getsized_property(vectx2,whip_linewidth) 
+                    whip_linestyle=[]
+                    for iii,whip_c in enumerate(boxplot_whiskerprops_linestyle):
+                        thecolor=self.get_line_style(iii,Plotinfo,'boxplot_whiskerprops_linestyle') 
+                        whip_linestyle.append(thecolor)                                   
+                    if len(whip_linestyle)>0: 
+                        whip_linestyle=self.getsized_property(vectx2,whip_linestyle)
+                    #------------------
+                    flip_mfcolors=[]
+                    for iii,flip_c in enumerate(boxplot_flierprops_markerfacecolor):
+                        thecolor=self.get_a_color(iii,Plotinfo,'boxplot_flierprops_markerfacecolor') 
+                        flip_mfcolors.append(thecolor)                                   
+                    if len(flip_mfcolors)>0: 
+                        flip_mfcolors=self.getsized_property(usedaxis,flip_mfcolors)
+                        boxplot_flierprops=None 
+                    else:
+                        boxplot_flierprops=None
+                    flip_mecolors=[]
+                    for iii,flip_c in enumerate(boxplot_flierprops_markeredgecolor):
+                        thecolor=self.get_a_color(iii,Plotinfo,'boxplot_flierprops_markeredgecolor') 
+                        flip_mecolors.append(thecolor)                                   
+                    if len(flip_mecolors)>0: 
+                        flip_mecolors=self.getsized_property(usedaxis,flip_mecolors)
+                    flip_marker=[]
+                    for iii,flip_c in enumerate(boxplot_flierprops_marker):
+                        thecolor=self.get_line_markertype(iii,Plotinfo,'boxplot_flierprops_marker') 
+                        flip_marker.append(thecolor)                                    
+                    if len(flip_marker)>0: 
+                        flip_marker=self.getsized_property(usedaxis,flip_marker) 
+                    flip_markersize=[]
+                    for iii,flip_c in enumerate(boxplot_flierprops_markersize):
+                        thecolor=self.get_line_markersize(iii,Plotinfo,'boxplot_flierprops_markersize') 
+                        flip_markersize.append(thecolor)                                    
+                    if len(flip_markersize)>0: 
+                        flip_markersize=self.getsized_property(usedaxis,flip_markersize)
+                    flip_linestyle=[]
+                    for iii,flip_c in enumerate(boxplot_flierprops_linestyle):
+                        thecolor=self.get_line_style(iii,Plotinfo,'boxplot_flierprops_linestyle') 
+                        flip_linestyle.append(thecolor)                                   
+                    if len(flip_linestyle)>0: 
+                        flip_linestyle=self.getsized_property(usedaxis,flip_linestyle)
+                    flip_linewidth=[]
+                    for iii,flip_c in enumerate(boxplot_flierprops_linewidth):
+                        thecolor=self.get_line_width(iii,Plotinfo,'boxplot_flierprops_linewidth') 
+                        flip_linewidth.append(thecolor)                                    
+                    if len(flip_linewidth)>0: 
+                        flip_linewidth=self.getsized_property(usedaxis,flip_linewidth) 
+                    #------------------
+                    meanp_mfcolors=[]
+                    for iii,meanp_c in enumerate(boxplot_meanprops_markerfacecolor):
+                        thecolor=self.get_a_color(iii,Plotinfo,'boxplot_meanprops_markerfacecolor') 
+                        meanp_mfcolors.append(thecolor)                                   
+                    if len(meanp_mfcolors)>0: 
+                        meanp_mfcolors=self.getsized_property(usedaxis,meanp_mfcolors)
+                        boxplot_meanprops=None 
+                    else:
+                        boxplot_meanprops=None
+                    meanp_mecolors=[]
+                    for iii,meanp_c in enumerate(boxplot_meanprops_markeredgecolor):
+                        thecolor=self.get_a_color(iii,Plotinfo,'boxplot_meanprops_markeredgecolor') 
+                        meanp_mecolors.append(thecolor)                                   
+                    if len(meanp_mecolors)>0: 
+                        meanp_mecolors=self.getsized_property(usedaxis,meanp_mecolors)
+                    meanp_colors=[]
+                    for iii,meanp_c in enumerate(boxplot_meanprops_color):
+                        thecolor=self.get_a_color(iii,Plotinfo,'boxplot_meanprops_color') 
+                        meanp_colors.append(thecolor)                                   
+                    if len(meanp_colors)>0: 
+                        meanp_colors=self.getsized_property(usedaxis,meanp_colors)
+                    meanp_marker=[]
+                    for iii,meanp_c in enumerate(boxplot_meanprops_marker):
+                        thecolor=self.get_line_markertype(iii,Plotinfo,'boxplot_meanprops_marker') 
+                        meanp_marker.append(thecolor)                                    
+                    if len(meanp_marker)>0: 
+                        meanp_marker=self.getsized_property(usedaxis,meanp_marker) 
+                    meanp_markersize=[]
+                    for iii,meanp_c in enumerate(boxplot_meanprops_markersize):
+                        thecolor=self.get_line_markersize(iii,Plotinfo,'boxplot_meanprops_markersize') 
+                        meanp_markersize.append(thecolor)                                    
+                    if len(meanp_markersize)>0: 
+                        meanp_markersize=self.getsized_property(usedaxis,meanp_markersize)
+                    meanp_linestyle=[]
+                    for iii,meanp_c in enumerate(boxplot_meanprops_linestyle):
+                        thecolor=self.get_line_style(iii,Plotinfo,'boxplot_meanprops_linestyle') 
+                        meanp_linestyle.append(thecolor)                                   
+                    if len(meanp_linestyle)>0: 
+                        meanp_linestyle=self.getsized_property(usedaxis,meanp_linestyle)
+                    meanp_linewidth=[]
+                    for iii,meanp_c in enumerate(boxplot_meanprops_linewidth):
+                        thecolor=self.get_line_width(iii,Plotinfo,'boxplot_meanprops_linewidth') 
+                        meanp_linewidth.append(thecolor)                                    
+                    if len(meanp_linewidth)>0: 
+                        meanp_linewidth=self.getsized_property(usedaxis,meanp_linewidth) 
+                    #------------------
+                    capp_colors=[]
+                    
+                    
+                    for iii,capp_c in enumerate(boxplot_capprops_color):
+                        thecolor=self.get_a_color(iii,Plotinfo,'boxplot_capprops_color') 
+                        capp_colors.append(thecolor)                                   
+                    if len(capp_colors)>0: 
+                        capp_colors=self.getsized_property(vectx2,capp_colors)
+                        boxplot_capprops=None 
+                    else:
+                        boxplot_capprops=None
+                    capp_linewidth=[]
+                    for iii,capp_c in enumerate(boxplot_capprops_linewidth):
+                        thecolor=self.get_line_width(iii,Plotinfo,'boxplot_capprops_linewidth') 
+                        capp_linewidth.append(thecolor)                                    
+                    if len(capp_linewidth)>0: 
+                        capp_linewidth=self.getsized_property(vectx2,capp_linewidth) 
+                    capp_linestyle=[]
+                    for iii,capp_c in enumerate(boxplot_capprops_linestyle):
+                        thecolor=self.get_line_style(iii,Plotinfo,'boxplot_capprops_linestyle') 
+                        capp_linestyle.append(thecolor)                                   
+                    if len(capp_linestyle)>0: 
+                        capp_linestyle=self.getsized_property(vectx2,capp_linestyle)
+                    '''
+                    capp_capsize=[]
+                    for iii,capp_c in enumerate(boxplot_capprops_capsize):
+                        thecolor=self.get_line_width(iii,Plotinfo,'boxplot_capprops_capsize') 
+                        capp_capsize.append(thecolor)                                    
+                    if len(capp_capsize)>0: 
+                        capp_capsize=self.getsized_property(vectx2,capp_capsize)
+                    '''    
+                     
+                    capp_capwidths=self.get_selected_list_moded(boxplot_capprops_capwidths)
+                    if self.is_list(capp_capwidths)==True:                                      
+                        if len(capp_capwidths)>0: 
+                            capp_capwidths=self.getsized_property(usedaxis,capp_capwidths)
+                            capp_capwidths=numpy.asarray(capp_capwidths)
+                    
+                    if b_umedians!=None:
+                        log.info('Found usermedians: {}'.format(b_umedians))
+                    
+                    if b_conf_intervals!=None:
+                        log.info('Found conf_intervals: {}'.format(b_conf_intervals))
+                        if boxplot_notch==False:
+                            log.warning('Conf_intervals only show when notch is True!')
+                    
+                    #do the plot
+                    boxplot_dict = ax.boxplot(all_sv, positions=b_pos, widths=b_wit, notch=boxplot_notch, sym=boxplot_sym, vert=boxplot_vert, patch_artist=boxplot_patch_artist, bootstrap=boxplot_bootstrap, meanline=boxplot_meanline, showmeans=boxplot_showmeans, showcaps=boxplot_showcaps, showbox=boxplot_showbox, showfliers=boxplot_showfliers, labels=legends, manage_ticks=boxplot_manage_ticks, autorange=boxplot_autorange, zorder=boxplot_zorder, whis=b_whis, usermedians=b_umedians, conf_intervals=b_conf_intervals, boxprops=boxplot_boxprops, flierprops=boxplot_flierprops, medianprops=boxplot_medianprops, meanprops=boxplot_meanprops, capprops=boxplot_capprops, whiskerprops=boxplot_whiskerprops, capwidths=capp_capwidths) # 
+                    
+                    for key in boxplot_dict:
+                        vals=[]
+                        for item in boxplot_dict[key]:
+                            vals.append(item.get_ydata())
+                        plinfo.update({key:vals})
+                        #print(f'{key}: {[item.get_ydata() for item in boxplot_dict[key]]}\n')
+
+                        # set indipendent property to each box
+                        if len(bp_colors)>0 and key=='boxes':
+                            for boxes,color in zip(boxplot_dict[key],bp_colors):
+                                boxes.set(color=color) #, xdata=cap.get_xdata() + (-n,+n), linewidth=4.0)
+                        if len(bp_linewidth)>0 and key=='boxes':
+                            for boxes,linewidth in zip(boxplot_dict[key],bp_linewidth):
+                                boxes.set(linewidth=linewidth)
+                        if len(bp_linestyle)>0 and key=='boxes':                           
+                            for boxes,linestyle in zip(boxplot_dict[key],bp_linestyle):
+                                boxes.set(linestyle=linestyle)  
+                        #----------------
+                        if len(mep_colors)>0 and key=='medians':
+                            for medians,color in zip(boxplot_dict[key],mep_colors):
+                                medians.set(color=color) 
+                        if len(mep_linewidth)>0 and key=='medians':
+                            for medians,linewidth in zip(boxplot_dict[key],mep_linewidth):
+                                medians.set(linewidth=linewidth)
+                        if len(mep_linestyle)>0 and key=='medians':                           
+                            for medians,linestyle in zip(boxplot_dict[key],mep_linestyle):
+                                medians.set(linestyle=linestyle)   
+                        #----------------
+                        if len(whip_colors)>0 and key=='whiskers':
+                            for whiskers,color in zip(boxplot_dict[key],whip_colors):
+                                whiskers.set(color=color) 
+                        if len(whip_linewidth)>0 and key=='whiskers':
+                            for whiskers,linewidth in zip(boxplot_dict[key],whip_linewidth):
+                                whiskers.set(linewidth=linewidth)
+                        if len(whip_linestyle)>0 and key=='whiskers':                           
+                            for whiskers,linestyle in zip(boxplot_dict[key],whip_linestyle):
+                                whiskers.set(linestyle=linestyle)   
+                        #----------------
+                        if len(flip_mfcolors)>0 and key=='fliers':
+                            for fliers,color in zip(boxplot_dict[key],flip_mfcolors):
+                                fliers.set(markerfacecolor=color) 
+                        if len(flip_mecolors)>0 and key=='fliers':
+                            for fliers,color in zip(boxplot_dict[key],flip_mecolors):
+                                fliers.set(markeredgecolor=color) 
+                        if len(flip_marker)>0 and key=='fliers':
+                            for fliers,marker in zip(boxplot_dict[key],flip_marker):
+                                fliers.set(marker=marker)
+                        if len(flip_markersize)>0 and key=='fliers':
+                            for fliers,markersize in zip(boxplot_dict[key],flip_markersize):
+                                fliers.set(markersize=markersize)
+                        if len(flip_linestyle)>0 and key=='fliers':                           
+                            for fliers,linestyle in zip(boxplot_dict[key],flip_linestyle):
+                                fliers.set(linestyle=linestyle)
+                        if len(flip_linewidth)>0 and key=='fliers':
+                            for fliers,linewidth in zip(boxplot_dict[key],flip_linewidth):
+                                fliers.set(linewidth=linewidth)
+                        #----------------
+                        if len(meanp_colors)>0 and key=='means':
+                            for means,color in zip(boxplot_dict[key],meanp_colors):
+                                means.set(color=color) 
+                        if len(meanp_mfcolors)>0 and key=='means':
+                            for means,color in zip(boxplot_dict[key],meanp_mfcolors):
+                                means.set(markerfacecolor=color) 
+                        if len(meanp_mecolors)>0 and key=='means':
+                            for means,color in zip(boxplot_dict[key],meanp_mecolors):
+                                means.set(markeredgecolor=color) 
+                        if len(meanp_marker)>0 and key=='means':
+                            for means,marker in zip(boxplot_dict[key],meanp_marker):
+                                means.set(marker=marker)
+                        if len(meanp_markersize)>0 and key=='means':
+                            for means,markersize in zip(boxplot_dict[key],meanp_markersize):
+                                means.set(markersize=markersize)
+                        if len(meanp_linestyle)>0 and key=='means':                           
+                            for means,linestyle in zip(boxplot_dict[key],meanp_linestyle):
+                                means.set(linestyle=linestyle)
+                        if len(meanp_linewidth)>0 and key=='means':
+                            for means,linewidth in zip(boxplot_dict[key],meanp_linewidth):
+                                means.set(linewidth=linewidth)
+                        #----------------
+                        if len(capp_colors)>0 and key=='caps':
+                            for caps,color in zip(boxplot_dict[key],capp_colors):
+                                caps.set(color=color) 
+                        '''
+                        if len(capp_capsize)>0 and key=='caps':
+                            for caps,color in zip(boxplot_dict[key],capp_capsize):
+                                caps.set(capzize=color) 
+                        '''
+                        if len(capp_linestyle)>0 and key=='caps':                           
+                            for caps,linestyle in zip(boxplot_dict[key],capp_linestyle):
+                                caps.set(linestyle=linestyle)
+                        if len(capp_linewidth)>0 and key=='caps':
+                            for caps,linewidth in zip(boxplot_dict[key],capp_linewidth):
+                                caps.set(linewidth=linewidth)
+                        
+                    
+                    #set x labels
+                    #Plotinfo[usedaxis[0]+'label']['Label_Text']='Positions'
+                    """
+                    Plotinfo=self.update_axis_ticks_label(usedaxis[0],Plotinfo,label=Plotinfo[usedaxis[0]+'label'])
+                    for lll,leg in enumerate(legends):
+                        if lll==0:
+                            atxt='{}'.format(leg)
+                        else:
+                            atxt='{}, {}'.format(atxt,leg)
+                        #atxt=atxt.strip("'")
+                    Plotinfo[usedaxis[1]+'label']['Label_Text']=atxt
+                    Plotinfo=self.update_axis_ticks_label(usedaxis[1],Plotinfo,label=Plotinfo[usedaxis[1]+'label'])
+                    """
+                    if boxplot_vert==False:
+                        Plotinfo=self.exchange_labels_ticks_X_Y(Plotinfo)
+                    plotok=True
+
+                self.set_legends_title(ax,Plotinfo) 
+                self.set_axis_ticks(ax,Plotinfo)                      
+
+        except Exception as e:
+            log.error('Making {} plot'.format(Plotinfo['Plot_Type']))
+            log.error(e)
+            self.log_Exception()
+            plotok=False  
+        return plotok,plinfo,ax,Plotinfo
+
+
+    def do_a_Stack_plot(self,ax,Plotinfo):     
+        # stack, stairs, event, violin, pie   
+        plinfo=self.get_plotted_info(Plotinfo) 
+        plotok=True
+        dfxyz=Plotinfo['dfxyz']
+        dfuvw=Plotinfo['dfuvw']        
+        plot_Dim=Plotinfo['plot_Dim']
+        Add_plot_Dim=Plotinfo['Add_plot_Dim']
+        plot_Dim=plot_Dim+Add_plot_Dim
+        axis_info=Plotinfo['axis_info']
+        Add_axis_info=Plotinfo['Add_axis_info']
+             
+        stack_baseline=Plotinfo['stack_baseline']
+        stack_colors=Plotinfo['stack_colors']
+
+        log.info('{} starting {} {}D as {}{}'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'], plot_Dim,axis_info,Add_axis_info))
+        #reset the labels for this plot        
+        ppp=self.Plot_dict[Plotinfo['me_plot']]
+        xlab=ppp['Axis_X']['Axis_Label']
+        ylab=ppp['Axis_Y']['Axis_Label']
+        zlab=ppp['Axis_Z']['Axis_Label']
+        ulab=ppp['Additional']['Axis_U']['Axis_Label']
+        vlab=ppp['Additional']['Axis_V']['Axis_Label']
+        wlab=ppp['Additional']['Axis_W']['Axis_Label']
+        labeldict={'x':xlab,'y':ylab,'z':zlab,'u':ulab,'v':vlab,'w':wlab}
+
+        doplot=False
+        try:            
+            #get all info
+            doplot,xxx,yyy,zzz,uuu,vvv,www,ccc,vectors,vectornames,usedaxis,y_sv,x_sv,all_sv,plinfo,_,_,_=self.get_likeeventplot_info_(dfxyz,dfuvw,axis_info,plinfo,Add_axis_info)
+                      
+            lenv=len(ccc)    
+            log.info('{} using the following axis to plot: {}'.format(Plotinfo['Plot_Type'],usedaxis))
+            if plot_Dim==0 or lenv==0:
+                doplot=False
+                log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type']))                                                        
+            elif lenv<=1 and Plotinfo['Plot_Type']=='stackplot':
+                doplot=False
+                log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type']))                                                        
+            else:
+                doplot=True
+
+            if doplot==True:                  
+                plotok=False   
                 
+                if Plotinfo['Plot_Type']=='stackplot':
+                    ce=self.get_selected_list_moded(stack_colors)  
+                    st_colors=[]
+                    legends=[]
+                    iii=0                                       
+                    for jjj,uaxis in enumerate(usedaxis):
+                        if uaxis != 'x':                           
+                            legends.append(labeldict[uaxis]['Label_Text'])                              
+                            thecolor=self.get_a_color(iii,Plotinfo,'stack_colors')   
+                            #log.info('stacked plot--> {} {} {} {}'.format(uaxis,iii,st_colors,thecolor))                             
+                            st_colors.append(thecolor)
+                            iii=iii+1                                                      
+                    x_sva=numpy.asarray(x_sv)
+                    y_sva=self.MNmat_toMNarray(y_sv)                    
+                    #log.info('stacked plot--> \ny_sva:{} '.format(y_sva))                    
+                    #log.info('stacked plot-->\ncolors:{} \nlegends:{} '.format(st_colors,legends))
+                    im = ax.stackplot(x_sva,y_sva,colors=st_colors, baseline=stack_baseline, labels=legends)
+                    st_colors=self.get_selected_list_moded(st_colors) #if is only 1 color                   
+                    legends=self.get_selected_list_moded(legends)    
+                    #im = ax.stackplot(x_sv,y_sv,colors=st_colors, baseline=stack_baseline, labels=legends)   
+                    plotok=True                                              
+                self.set_legends_title(ax,Plotinfo) 
+                self.set_axis_ticks(ax,Plotinfo)                      
+
+        except Exception as e:
+            log.error('Making {} plot'.format(Plotinfo['Plot_Type']))
+            log.error(e)
+            self.log_Exception()
+            plotok=False  
+        return plotok,plinfo,ax,Plotinfo
+
+    def do_a_Pie_plot(self,ax,Plotinfo):     
+        # stack, stairs, event, violin, pie   
+        plinfo=self.get_plotted_info(Plotinfo) 
+        plotok=True
+        dfxyz=Plotinfo['dfxyz']
+        dfuvw=Plotinfo['dfuvw']        
+        plot_Dim=Plotinfo['plot_Dim']
+        Add_plot_Dim=Plotinfo['Add_plot_Dim']
+        plot_Dim=plot_Dim+Add_plot_Dim
+        axis_info=Plotinfo['axis_info']
+        Add_axis_info=Plotinfo['Add_axis_info']
+                   
+        pie_explode=Plotinfo['pie_explode']
+        pie_colors=Plotinfo['pie_colors']
+        pie_autopct=Plotinfo['pie_autopct']
+        pie_pctdistance=Plotinfo['pie_pctdistance']
+        pie_shadow=Plotinfo['pie_shadow']
+        pie_labeldistance=Plotinfo['pie_labeldistance']
+        pie_radius=Plotinfo['pie_radius']
+        pie_startangle=Plotinfo['pie_startangle']
+        pie_counterclock=Plotinfo['pie_counterclock']
+        pie_textprops=Plotinfo['pie_textprops']
+        pie_center=Plotinfo['pie_center']
+        pie_frame=Plotinfo['pie_frame']
+        pie_rotatelabels=Plotinfo['pie_rotatelabels']
+        pie_normalize=Plotinfo['pie_normalize']
+        pie_wedgeprops=Plotinfo['pie_wedgeprops']
+
+        log.info('{} starting {} {}D as {}{}'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'], plot_Dim,axis_info,Add_axis_info))
+        #reset the labels for this plot        
+        ppp=self.Plot_dict[Plotinfo['me_plot']]
+        xlab=ppp['Axis_X']['Axis_Label']
+        ylab=ppp['Axis_Y']['Axis_Label']
+        zlab=ppp['Axis_Z']['Axis_Label']
+        ulab=ppp['Additional']['Axis_U']['Axis_Label']
+        vlab=ppp['Additional']['Axis_V']['Axis_Label']
+        wlab=ppp['Additional']['Axis_W']['Axis_Label']
+        labeldict={'x':xlab,'y':ylab,'z':zlab,'u':ulab,'v':vlab,'w':wlab}
+
+        doplot=False
+        try:            
+            #get all info
+            doplot,xxx,yyy,zzz,uuu,vvv,www,ccc,vectors,vectornames,usedaxis,y_sv,x_sv,all_sv,plinfo,_,_,_=self.get_likeeventplot_info_(dfxyz,dfuvw,axis_info,plinfo,Add_axis_info)
+                      
+            lenv=len(ccc)    
+            log.info('{} using the following axis to plot: {}'.format(Plotinfo['Plot_Type'],usedaxis))
+            if plot_Dim==0 or lenv==0:
+                doplot=False
+                log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type']))                                                        
+            elif lenv<=1 and Plotinfo['Plot_Type']=='stackplot':
+                doplot=False
+                log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type']))                                                        
+            else:
+                doplot=True
+
+            if doplot==True:                  
+                plotok=False   
                 if Plotinfo['Plot_Type']=='pie':
                     p_exp=self.get_selected_list_moded(pie_explode)
                     p_explode=self.getsized_property(x_sv,p_exp)
@@ -1261,7 +1927,64 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                         ext_r=ext_r-eachsize
                     plotok=True
 
+                self.set_legends_title(ax,Plotinfo) 
+                self.set_axis_ticks(ax,Plotinfo)                      
 
+        except Exception as e:
+            log.error('Making {} plot'.format(Plotinfo['Plot_Type']))
+            log.error(e)
+            self.log_Exception()
+            plotok=False  
+        return plotok,plinfo,ax,Plotinfo
+
+    def do_a_Stairs_plot(self,ax,Plotinfo):     
+        # stack, stairs, event, violin, pie   
+        plinfo=self.get_plotted_info(Plotinfo) 
+        plotok=True
+        dfxyz=Plotinfo['dfxyz']
+        dfuvw=Plotinfo['dfuvw']        
+        plot_Dim=Plotinfo['plot_Dim']
+        Add_plot_Dim=Plotinfo['Add_plot_Dim']
+        plot_Dim=plot_Dim+Add_plot_Dim
+        axis_info=Plotinfo['axis_info']
+        Add_axis_info=Plotinfo['Add_axis_info']
+        
+        stairs_baseline=Plotinfo['stairs_baseline']
+        stairs_fill=Plotinfo['stairs_fill']
+        stairs_orientation=Plotinfo['stairs_orientation']
+        stairs_edges=Plotinfo['stairs_edges']
+        stairs_Use_Lines_style=Plotinfo['stairs_Use_Lines_style']
+        
+        log.info('{} starting {} {}D as {}{}'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'], plot_Dim,axis_info,Add_axis_info))
+        #reset the labels for this plot        
+        ppp=self.Plot_dict[Plotinfo['me_plot']]
+        xlab=ppp['Axis_X']['Axis_Label']
+        ylab=ppp['Axis_Y']['Axis_Label']
+        zlab=ppp['Axis_Z']['Axis_Label']
+        ulab=ppp['Additional']['Axis_U']['Axis_Label']
+        vlab=ppp['Additional']['Axis_V']['Axis_Label']
+        wlab=ppp['Additional']['Axis_W']['Axis_Label']
+        labeldict={'x':xlab,'y':ylab,'z':zlab,'u':ulab,'v':vlab,'w':wlab}
+
+        doplot=False
+        try:            
+            #get all info
+            doplot,xxx,yyy,zzz,uuu,vvv,www,ccc,vectors,vectornames,usedaxis,y_sv,x_sv,all_sv,plinfo,_,_,_=self.get_likeeventplot_info_(dfxyz,dfuvw,axis_info,plinfo,Add_axis_info)
+                      
+            lenv=len(ccc)    
+            log.info('{} using the following axis to plot: {}'.format(Plotinfo['Plot_Type'],usedaxis))
+            if plot_Dim==0 or lenv==0:
+                doplot=False
+                log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type']))                                                        
+            elif lenv<=1 and Plotinfo['Plot_Type']=='stackplot':
+                doplot=False
+                log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type']))                                                        
+            else:
+                doplot=True
+
+            if doplot==True:                  
+                plotok=False   
+                
                 if Plotinfo['Plot_Type']=='stairs':
                     
                     #line_width,line_colors=self.get_line_colors_RGBAlist(Plotinfo,xy) 
@@ -1318,28 +2041,64 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                     if stairs_orientation=='horizontal':                            
                         Plotinfo=self.exchange_labels_ticks_X_Y(Plotinfo)
                     plotok=True
+                self.set_legends_title(ax,Plotinfo) 
+                self.set_axis_ticks(ax,Plotinfo)                      
 
-                if Plotinfo['Plot_Type']=='stackplot':
-                    ce=self.get_selected_list_moded(stack_colors)  
-                    st_colors=[]
-                    legends=[]
-                    iii=0                                       
-                    for jjj,uaxis in enumerate(usedaxis):
-                        if uaxis != 'x':                           
-                            legends.append(labeldict[uaxis]['Label_Text'])                              
-                            thecolor=self.get_a_color(iii,Plotinfo,'stack_colors')   
-                            #log.info('stacked plot--> {} {} {} {}'.format(uaxis,iii,st_colors,thecolor))                             
-                            st_colors.append(thecolor)
-                            iii=iii+1                                                      
-                    x_sva=numpy.asarray(x_sv)
-                    y_sva=self.MNmat_toMNarray(y_sv)                    
-                    #log.info('stacked plot--> \ny_sva:{} '.format(y_sva))                    
-                    #log.info('stacked plot-->\ncolors:{} \nlegends:{} '.format(st_colors,legends))
-                    im = ax.stackplot(x_sva,y_sva,colors=st_colors, baseline=stack_baseline, labels=legends)
-                    st_colors=self.get_selected_list_moded(st_colors) #if is only 1 color                   
-                    legends=self.get_selected_list_moded(legends)    
-                    #im = ax.stackplot(x_sv,y_sv,colors=st_colors, baseline=stack_baseline, labels=legends)   
-                    plotok=True                                              
+        except Exception as e:
+            log.error('Making {} plot'.format(Plotinfo['Plot_Type']))
+            log.error(e)
+            self.log_Exception()
+            plotok=False  
+        return plotok,plinfo,ax,Plotinfo
+
+    def do_a_Event_plot(self,ax,Plotinfo):     
+        # stack, stairs, event, violin, pie   
+        plinfo=self.get_plotted_info(Plotinfo) 
+        plotok=True
+        dfxyz=Plotinfo['dfxyz']
+        dfuvw=Plotinfo['dfuvw']        
+        plot_Dim=Plotinfo['plot_Dim']
+        Add_plot_Dim=Plotinfo['Add_plot_Dim']
+        plot_Dim=plot_Dim+Add_plot_Dim
+        axis_info=Plotinfo['axis_info']
+        Add_axis_info=Plotinfo['Add_axis_info']
+        
+        event_orientation=Plotinfo['event_orientation']
+        event_lineoffsets=Plotinfo['event_lineoffsets']
+        event_linelengths=Plotinfo['event_linelengths']
+        event_linewidths=Plotinfo['event_linewidths']
+        event_colors=Plotinfo['event_colors']
+        event_linestyles=Plotinfo['event_linestyles']
+
+        log.info('{} starting {} {}D as {}{}'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'], plot_Dim,axis_info,Add_axis_info))
+        #reset the labels for this plot        
+        ppp=self.Plot_dict[Plotinfo['me_plot']]
+        xlab=ppp['Axis_X']['Axis_Label']
+        ylab=ppp['Axis_Y']['Axis_Label']
+        zlab=ppp['Axis_Z']['Axis_Label']
+        ulab=ppp['Additional']['Axis_U']['Axis_Label']
+        vlab=ppp['Additional']['Axis_V']['Axis_Label']
+        wlab=ppp['Additional']['Axis_W']['Axis_Label']
+        labeldict={'x':xlab,'y':ylab,'z':zlab,'u':ulab,'v':vlab,'w':wlab}
+
+        doplot=False
+        try:            
+            #get all info
+            doplot,xxx,yyy,zzz,uuu,vvv,www,ccc,vectors,vectornames,usedaxis,y_sv,x_sv,all_sv,plinfo,_,_,_=self.get_likeeventplot_info_(dfxyz,dfuvw,axis_info,plinfo,Add_axis_info)
+                      
+            lenv=len(ccc)    
+            log.info('{} using the following axis to plot: {}'.format(Plotinfo['Plot_Type'],usedaxis))
+            if plot_Dim==0 or lenv==0:
+                doplot=False
+                log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type']))                                                        
+            elif lenv<=1 and Plotinfo['Plot_Type']=='stackplot':
+                doplot=False
+                log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type']))                                                        
+            else:
+                doplot=True
+
+            if doplot==True:                  
+                plotok=False   
                     
                 if Plotinfo['Plot_Type']=='eventplot':
                     #get all properties for plot
@@ -1444,13 +2203,17 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                 theenum.append(iii+1)
         return theenum
     
-    def list_map(self,alist,rangemin,rangemax):
+    def list_map(self,alist,rangemin,rangemax,frommin=None,frommax=None):
         normlist=[]
         if self.is_list(alist)==True:
             normarr=numpy.asfarray(alist)
             nmin=numpy.min(normarr)
             nmax=numpy.max(normarr)
             #log.info('before map -> {} {} {}'.format(normarr,nmin,nmax))
+            if frommin!=None:
+                nmin=frommin
+            if frommax!=None:
+                nmax=frommax
             if (nmax-nmin)==0:
                 nmax=1
                 nmin=0
@@ -2421,6 +3184,14 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                 all_nan=False
                 break
         return all_nan
+    
+    def is_all_None_values(self,listvals):
+        all_none=True
+        for iii in listvals:
+            if iii != None:
+                all_none=False
+                break
+        return all_none
 
     def evaluate_all_combinations_xy_in_equation(self,ux_vect,uy_vect,eq,x_varname,y_varname):
         dxyval=[]        
@@ -2839,8 +3610,18 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         if Plotinfo['Plot_Type'] in ['streamplot']:
             plotok,plinfo,ax,Plotinfo=self.do_a_Stream_plot(ax,Plotinfo) 
         
-        if Plotinfo['Plot_Type'] in ['eventplot','stackplot','stairs','pie','violin']:
+        if Plotinfo['Plot_Type'] in ['eventplot']:
             plotok,plinfo,ax,Plotinfo=self.do_a_Event_plot(ax,Plotinfo) 
+        if Plotinfo['Plot_Type'] in ['stackplot']:
+            plotok,plinfo,ax,Plotinfo=self.do_a_Stack_plot(ax,Plotinfo) 
+        if Plotinfo['Plot_Type'] in ['stairs']:
+            plotok,plinfo,ax,Plotinfo=self.do_a_Stairs_plot(ax,Plotinfo) 
+        if Plotinfo['Plot_Type'] in ['pie']:
+            plotok,plinfo,ax,Plotinfo=self.do_a_Pie_plot(ax,Plotinfo) 
+        if Plotinfo['Plot_Type'] in ['violin']:
+            plotok,plinfo,ax,Plotinfo=self.do_a_Violin_plot(ax,Plotinfo) 
+        if Plotinfo['Plot_Type'] in ['boxplot']:
+            plotok,plinfo,ax,Plotinfo=self.do_a_Box_plot(ax,Plotinfo) 
 
         if Plotinfo['Plot_Type'] in ['plot','loglog','semilogx','semilogy','errorbar']:
             plotok,plinfo,ax,Plotinfo=self.do_a_plot_plot(ax,Plotinfo) 
@@ -3176,8 +3957,8 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             acolor=str(linecolor_list[ccc]).strip("'")
         return acolor
     
-    def get_line_markertype(self,line_number,Plotinfo):
-        linemarker_list=Plotinfo['Line_Marker_Type']                
+    def get_line_markertype(self,line_number,Plotinfo,lproperty='Line_Marker_Type'):
+        linemarker_list=Plotinfo[lproperty]                
         nummark=len(linemarker_list)
         ccc=numpy.fmod(line_number, nummark)                 
         if 'int_' in linemarker_list[ccc]:
@@ -3186,22 +3967,22 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             amarker=str(linemarker_list[ccc]).strip("'")
         return amarker
     
-    def get_line_markersize(self,line_number,Plotinfo):
-        line_list=Plotinfo['Line_Marker_Size']              
+    def get_line_markersize(self,line_number,Plotinfo,lproperty='Line_Marker_Size'):
+        line_list=Plotinfo[lproperty]              
         numcolors=len(line_list)
         ccc=numpy.fmod(line_number, numcolors)                    
         ans=float(line_list[ccc])
         return ans
     
-    def get_line_markeredgewidth(self,line_number,Plotinfo):
-        line_list=Plotinfo['markeredgewidth']              
+    def get_line_markeredgewidth(self,line_number,Plotinfo,lproperty='markeredgewidth'):
+        line_list=Plotinfo[lproperty]              
         numcolors=len(line_list)
         ccc=numpy.fmod(line_number, numcolors)                    
         ans=float(line_list[ccc])
         return ans
     
-    def get_line_markeredgecolor(self,line_number,Plotinfo):        
-        acolor=self.get_a_color(line_number,Plotinfo,'markeredgecolor')                               
+    def get_line_markeredgecolor(self,line_number,Plotinfo,lproperty='markeredgecolor'):        
+        acolor=self.get_a_color(line_number,Plotinfo,lproperty)                               
         return acolor
     
     def get_barbcolor(self,line_number,Plotinfo):        
@@ -3212,8 +3993,8 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         acolor=self.get_a_color(line_number,Plotinfo,'barbs_flagcolor')                               
         return acolor
     
-    def get_line_markerfacecolor(self,line_number,Plotinfo):        
-        acolor=self.get_a_color(line_number,Plotinfo,'markerfacecolor')        
+    def get_line_markerfacecolor(self,line_number,Plotinfo,lproperty='markerfacecolor'):        
+        acolor=self.get_a_color(line_number,Plotinfo,lproperty)        
         return acolor
     
     def get_a_color(self,line_number,Plotinfo,plotproperty):
@@ -3995,7 +4776,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             position_label=plotinfo['cm_position_label'] #"top", "right", "bottom", or "left"
             #gs0 = plotinfo['me_layout'][0]
             gs0 = self.spec[plotinfo['me_layout_pos']]
-            print('gs0',gs0)
+            #print('gs0',gs0)
             if position_label in ["right","left"]:
                 gs00 = matplotlib.gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs0)
                 ori='vertical'
@@ -4529,6 +5310,61 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         plotinfo.update({'violin_quantiles':ppp['Violinplot']['quantiles']})
         plotinfo.update({'violin_points':ppp['Violinplot']['points']})
         plotinfo.update({'violin_bw_method':ppp['Violinplot']['bw_method']})
+        plotinfo.update({'violin_bw_method_KDE':ppp['Violinplot']['bw_method_KDE']})
+        #Boxplot
+        plotinfo.update({'boxplot_positions':ppp['Boxplot']['positions']})
+        plotinfo.update({'boxplot_widths':ppp['Boxplot']['widths']})
+        plotinfo.update({'boxplot_notch':ppp['Boxplot']['notch']})
+        plotinfo.update({'boxplot_sym':ppp['Boxplot']['sym']})
+        plotinfo.update({'boxplot_orientation':ppp['Boxplot']['orientation']})
+        plotinfo.update({'boxplot_whis':ppp['Boxplot']['whis']})
+        plotinfo.update({'boxplot_bootstrap':ppp['Boxplot']['bootstrap']})
+        plotinfo.update({'boxplot_usermedians':ppp['Boxplot']['usermedians']})
+        plotinfo.update({'boxplot_patch_artist':ppp['Boxplot']['patch_artist']})
+        plotinfo.update({'boxplot_conf_intervals':ppp['Boxplot']['conf_intervals']})
+        plotinfo.update({'boxplot_meanline':ppp['Boxplot']['meanline']})
+        plotinfo.update({'boxplot_showmeans':ppp['Boxplot']['showmeans']})
+        plotinfo.update({'boxplot_showcaps':ppp['Boxplot']['showcaps']})
+        plotinfo.update({'boxplot_showbox':ppp['Boxplot']['showbox']})
+        plotinfo.update({'boxplot_showfliers':ppp['Boxplot']['showfliers']})
+        plotinfo.update({'boxplot_manage_ticks':ppp['Boxplot']['manage_ticks']})
+        plotinfo.update({'boxplot_autorange':ppp['Boxplot']['autorange']})
+        plotinfo.update({'boxplot_zorder':ppp['Boxplot']['zorder']})
+        plotinfo.update({'boxplot_boxprops_color':ppp['Boxplot']['boxprops']['color']})
+        plotinfo.update({'boxplot_boxprops_linestyle':ppp['Boxplot']['boxprops']['linestyle']})
+        plotinfo.update({'boxplot_boxprops_linewidth':ppp['Boxplot']['boxprops']['linewidth']})
+        
+        plotinfo.update({'boxplot_flierprops_marker':ppp['Boxplot']['flierprops']['marker']})
+        plotinfo.update({'boxplot_flierprops_markerfacecolor':ppp['Boxplot']['flierprops']['markerfacecolor']})
+        plotinfo.update({'boxplot_flierprops_markersize':ppp['Boxplot']['flierprops']['markersize']})
+        plotinfo.update({'boxplot_flierprops_linestyle':ppp['Boxplot']['flierprops']['linestyle']})
+        plotinfo.update({'boxplot_flierprops_markeredgecolor':ppp['Boxplot']['flierprops']['markeredgecolor']})
+        plotinfo.update({'boxplot_flierprops_linewidth':ppp['Boxplot']['flierprops']['linewidth']})        
+
+        plotinfo.update({'boxplot_medianprops_color':ppp['Boxplot']['medianprops']['color']})
+        plotinfo.update({'boxplot_medianprops_linestyle':ppp['Boxplot']['medianprops']['linestyle']})
+        plotinfo.update({'boxplot_medianprops_linewidth':ppp['Boxplot']['medianprops']['linewidth']})
+
+        plotinfo.update({'boxplot_whiskerprops_color':ppp['Boxplot']['whiskerprops']['color']})
+        plotinfo.update({'boxplot_whiskerprops_linestyle':ppp['Boxplot']['whiskerprops']['linestyle']})
+        plotinfo.update({'boxplot_whiskerprops_linewidth':ppp['Boxplot']['whiskerprops']['linewidth']})
+
+        plotinfo.update({'boxplot_meanprops_color':ppp['Boxplot']['meanprops']['color']})
+        plotinfo.update({'boxplot_meanprops_marker':ppp['Boxplot']['meanprops']['marker']})
+        plotinfo.update({'boxplot_meanprops_markerfacecolor':ppp['Boxplot']['meanprops']['markerfacecolor']})
+        plotinfo.update({'boxplot_meanprops_markersize':ppp['Boxplot']['meanprops']['markersize']})
+        plotinfo.update({'boxplot_meanprops_linestyle':ppp['Boxplot']['meanprops']['linestyle']})
+        plotinfo.update({'boxplot_meanprops_markeredgecolor':ppp['Boxplot']['meanprops']['markeredgecolor']})
+        plotinfo.update({'boxplot_meanprops_linewidth':ppp['Boxplot']['meanprops']['linewidth']})
+       
+        plotinfo.update({'boxplot_capprops_color':ppp['Boxplot']['capprops']['color']})
+        plotinfo.update({'boxplot_capprops_linestyle':ppp['Boxplot']['capprops']['linestyle']})
+        plotinfo.update({'boxplot_capprops_linewidth':ppp['Boxplot']['capprops']['linewidth']})
+        #plotinfo.update({'boxplot_capprops_capsize':ppp['Boxplot']['capprops']['capsize']})
+        plotinfo.update({'boxplot_capprops_capwidths':ppp['Boxplot']['capprops']['capwidths']})
+        
+        
+
         #Layout
         numplots=len(self.Plot_dict)
         layout=ppp['Layout_Position_HV']
@@ -5847,8 +6683,8 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             plotinfo.update({'uy':uy})
             plotinfo.update({'uz':uz})
             log.info('Found unique vector lengths lux={} luy={} luz={}'.format(len(ux),len(uy),len(uz)))
-            log.debug('dfaxis_x={} dfaxis_y={} dfaxis_z={}'.format(dfaxis_x,dfaxis_y,dfaxis_z))
-            log.debug('ux={} uy={} uz={}'.format(ux,uy,uz))
+            #log.debug('dfaxis_x={} dfaxis_y={} dfaxis_z={}'.format(dfaxis_x,dfaxis_y,dfaxis_z))
+            #log.debug('ux={} uy={} uz={}'.format(ux,uy,uz))
             if plotinfo['plot_Dim']==3:
                 if len(ux)>1 and len(uy)>1 and len(uz)>1:
                     log.info('3D Plot')                    

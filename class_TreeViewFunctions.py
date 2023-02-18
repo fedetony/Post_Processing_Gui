@@ -196,7 +196,7 @@ class treeview_functions(QtWidgets.QWidget):
             pass
    
     def set_tooltiptext(self,index):
-        reslist,resvallist=self.get_item_restriction_resval(index)    
+        reslist,resvallist,_=self.get_item_restriction_resval(index)    
         for res,resval in zip(reslist,resvallist):
             itm = index.model().itemFromIndex(index) 
             if res in ['limited_selection','is_list_item_limited_selection']:                
@@ -409,7 +409,7 @@ class treeview_functions(QtWidgets.QWidget):
         self._last_value_selected=None
 
     def is_item_supposed_to_be_a_list(self,itm):
-        reslist,resvallist=self.get_item_restriction_resval(itm)    
+        reslist,resvallist,_=self.get_item_restriction_resval(itm)    
         for res,resval in zip(reslist,resvallist):            
             if 'is_list_item_' in res or (res=='is_value_type' and resval==str(type([]))):
                 return True
@@ -418,7 +418,7 @@ class treeview_functions(QtWidgets.QWidget):
     def get_item_supposed_type_subtype(self,itm):
         subtype=''
         thetype=str(type(''))
-        reslist,resvallist=self.get_item_restriction_resval(itm)    
+        reslist,resvallist,resvalaltlist=self.get_item_restriction_resval(itm)    
         if self.is_item_supposed_to_be_a_list(itm)==False:            
             for res,resval in zip(reslist,resvallist):            
                 if res=='is_value_type':
@@ -439,11 +439,16 @@ class treeview_functions(QtWidgets.QWidget):
             keymmm=str(mmm)            
             if '__m__' in keymmm:
                 keyval=keymmm.replace('__m__','__mv__')
+                keyalt=keymmm.replace('__m__','__ma__')
                 if mask[keymmm]=='is_list_item_type':
-                    return mask[keyval]
+                    try:
+                        malt=mask[keyalt]
+                        return [mask[keyval],malt]
+                    except:
+                        return mask[keyval]
         return ''
 
-    def set_type_to_value(self,val,typestr,subtype=''):
+    def set_type_to_value(self,val,typestr,subtype=''):        
         if typestr==str(type(1)):
             try:
                 tyval=int(val)
@@ -469,15 +474,29 @@ class treeview_functions(QtWidgets.QWidget):
                 split=self.str_to_list(val)
                 if split!=None:
                     tyval=[]
-                    for iii in split:
-                        if subtype==str(type(0.1)):
-                            iiival=float(iii)
-                        elif subtype==str(type(0)):
-                            iiival=int(iii)
-                        elif subtype==str(type('')):
-                            iiival=str(iii)
-                        else:
-                            iiival=iii
+                    for iii in split:    
+                        if self.is_list(subtype)==True:
+                            for st in subtype:
+                                if st==str(type(0.1)):
+                                    iiival=float(iii)
+                                    break
+                                elif st==str(type(0)):
+                                    iiival=int(iii)
+                                    break
+                                elif st==str(type('')):
+                                    iiival=str(iii)
+                                    break
+                                else:
+                                    iiival=iii
+                        else:        
+                            if subtype==str(type(0.1)):
+                                iiival=float(iii)
+                            elif subtype==str(type(0)):
+                                iiival=int(iii)
+                            elif subtype==str(type('')):
+                                iiival=str(iii)
+                            else:
+                                iiival=iii
                         tyval.append(iiival)                    
                 else:
                     tyval=str(val)
@@ -559,16 +578,23 @@ class treeview_functions(QtWidgets.QWidget):
             itmmask=self.get_mask_for_item(self.get_gentrack_from_localtrack(track))
         reslist=[]
         resvallist=[]
+        resvalaltlist=[]
         if len(itmmask)>0:
             for mmm in itmmask:
                 keyname=str(mmm)
                 if '__m__' in keyname:                    
                     keyval=keyname.replace('__m__','__mv__')   
+                    keyalt=keyname.replace('__m__','__ma__')
                     restriction=itmmask[keyname]
                     restrictionval=itmmask[keyval]      
                     reslist.append(restriction)
                     resvallist.append(restrictionval)
-        return reslist,resvallist
+                    try:
+                        restrictionvalalt=itmmask[keyalt]                        
+                    except:
+                        restrictionvalalt=None
+                    resvalaltlist.append(restrictionvalalt)    
+        return reslist,resvallist,resvalaltlist
                     
         
 
@@ -582,18 +608,24 @@ class treeview_functions(QtWidgets.QWidget):
         if itmmask=={}:
             itmmask=self.get_mask_for_item(self.get_gentrack_from_localtrack(track))
         #print(self.Plot_struct_mask)
-        print('Masked Track:',track,'Mask:',itmmask)
+        log.debug('Masked Track: {} Mask: {}'.format(track,itmmask))
         #value=self.get_tracked_value_in_struct(track,plot_struct)
         #print('Tracked value:',value)
         if len(itmmask)>0:
             for mmm in itmmask:
                 keyname=str(mmm)
                 if '__m__' in keyname:                    
-                    keyval=keyname.replace('__m__','__mv__')   
+                    keyval=keyname.replace('__m__','__mv__') 
+                    keyalt=keyname.replace('__m__','__ma__')  
                     restriction=itmmask[keyname]
                     restrictionval=itmmask[keyval]      
                     #print('Check restriction',restriction,'---->',restrictionval)           
                     isok=self.checkitem_value_with_mask(restriction,restrictionval,val)  
+                    try:
+                        restrictionvalalt=itmmask[keyalt]
+                        isok=isok or (self.checkitem_value_with_mask(restriction,restrictionvalalt,val))
+                    except:
+                        pass
                     if restriction=='is_unique' and 'ID' in track:
                         idlist=self.get_ID_list()     
                         if val in idlist:

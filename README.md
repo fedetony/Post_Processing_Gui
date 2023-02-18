@@ -34,6 +34,8 @@ Features
   - stackplot
   - stairs
   - pie
+  - violin
+  - boxplot
 - Polar projection
 - Plot preview
 - Functionalities to save figure preview, export or copy to clipboard, save to pdf.
@@ -52,7 +54,7 @@ Features
 To do:
 ---------------------------------------------------------------------------------
 - Change plot, item ordering? does it matter?
-- Finish the 2D plots missing: hexbin, boxplot, heatmap, violin, cohere, specgram, phase_spectrum, magnitude_spectrum...
+- Finish the 2D plots missing: hexbin, heatmap, cohere, specgram, phase_spectrum, magnitude_spectrum...
 - Support other projections
 - Support tables
 - Add additional title prefix legends and labels editing after plot.
@@ -67,6 +69,8 @@ To do:
 ---------------------------------------------------------------------------------------
 
 ![Python Logo](https://github.com/fedetony/PP_Gui/blob/main/img/Data-Scatter-Plot-icon32.png "PP_Gui V1.0beta by FG") If you like my work consider [supporting me!][sp]
+
+G1(junas) Cesium: D9CFSvUHQDJJ4iFExVU4fTMAidADV8kedabeqtV6o3CS
 
 [sp]: https://github.com/sponsors/fedetony
 
