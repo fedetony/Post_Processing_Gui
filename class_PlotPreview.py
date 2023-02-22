@@ -15,6 +15,7 @@ import pandas as pd
 import re
 from scipy.interpolate import interp1d
 from scipy.special import comb
+from scipy import signal
 import math
 from matplotlib.backends.qt_compat import QtWidgets
 from matplotlib.backends.backend_qtagg import (
@@ -757,7 +758,193 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                 
         return layoutamountmat,layoutmat,layoutdict,layoutamountlist
 
+    def get_colormap_range(self,vect,Plotinfo):
+        ppp=self.Plot_dict[Plotinfo['me_plot']]
+        if ppp['Colormap']['Colormap_Auto_Range']==True:
+            cmrange=[min(vect),max(vect)] #set new range if auto range             
+        else:
+            cmrange=Plotinfo['Colormap_Range']
+        cmvmin=cmrange[0]
+        cmvmax=cmrange[1] 
+        return cmvmin,cmvmax
 
+
+    def do_a_spectrum_plot(self,ax,Plotinfo):        
+        plinfo=self.get_plotted_info(Plotinfo) 
+        plotok=True    
+        dfxyz=Plotinfo['dfxyz']    
+            
+        plot_Dim=Plotinfo['plot_Dim']
+        axis_info=Plotinfo['axis_info']
+        colormap_dict=Plotinfo['colormap_dict']
+        cmrange=Plotinfo['Colormap_Range']
+        #xaxis=Plotinfo['xaxis']
+        yaxis=Plotinfo['yaxis']
+        zaxis=Plotinfo['zaxis']
+        
+        spectrum_NFFT=Plotinfo['spectrum_NFFT']
+        spectrum_Fs=Plotinfo['spectrum_Fs']
+        spectrum_Fc=Plotinfo['spectrum_Fc']
+        spectrum_detrend=Plotinfo['spectrum_detrend']
+        spectrum_window=Plotinfo['spectrum_window']
+        spectrum_noverlap=Plotinfo['spectrum_noverlap']
+        spectrum_pad_to=Plotinfo['spectrum_pad_to']
+        spectrum_sides=Plotinfo['spectrum_sides']
+        spectrum_scale_by_freq=Plotinfo['spectrum_scale_by_freq']
+        spectrum_mode=Plotinfo['spectrum_mode']
+        spectrum_scale=Plotinfo['spectrum_scale']
+        spectrum_scipy_parameters=Plotinfo['spectrum_scipy_parameters']
+        spectrum_scipy_windowtype=Plotinfo['spectrum_scipy_windowtype']
+        
+        
+        log.info('{} starting {} {}D as {}'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'], plot_Dim,axis_info))
+        doplot=False
+        try:
+            xxx,yyy,zzz,_,_=self.get_vectors_separated(dfxyz)
+            xy=self.get_var_axis_info_(1,axis_info,[xxx,yyy,zzz])
+            ccc=self.get_var_axis_info_(2,axis_info,[xxx,yyy,zzz])             
+            value=yaxis
+            if self.is_list(xy)==False:
+                doplot=False
+                log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'])) 
+            else:
+                if len(xy)==0:
+                    doplot=False
+                    log.warning('Not enough data to make {} {} plot!'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type']))   
+                else:
+                    doplot=True                                            
+            #Set colormap 2D   
+            if self.is_list(ccc)==False:   
+                ccc=xy 
+            cmvmin,cmvmax=self.get_colormap_range(ccc,Plotinfo)
+            # warn
+            if Plotinfo['Plot_Type']=='specgram' and spectrum_mode=='psd' and spectrum_scale_by_freq==True:
+                log.warning('Scale by frequency is not taken in count when psd mode')   
+            #set window  
+            def spectrum_window_func(xy,spectrum_window,spectrum_scipy_windowtype,spectrum_scipy_parameters,valx,spectrum_NFFT):  
+                try:            
+                    NP=len(xy)
+                    #log.info('NP from xy ={} valx ={}'.format(NP,valx))
+                except:
+                    if self.is_list(valx)==True:
+                        NP=len(valx)
+                    else:
+                        NP=valx
+                if NP<spectrum_NFFT:
+                    NP=spectrum_NFFT
+                #log.info('NP value {}'.format(NP))
+                if spectrum_window=='none': 
+                    thewindow=matplotlib.mlab.window_none(NP)
+                elif spectrum_window=='hanning':      
+                    thewindow=matplotlib.mlab.window_hanning(NP)
+                elif spectrum_window=='blackman':      
+                    thewindow=numpy.blackman(NP)
+                elif spectrum_window=='hamming':      
+                    thewindow=numpy.hamming(NP)
+                elif spectrum_window=='scipy_signal': 
+                    try:
+                        if spectrum_scipy_windowtype in ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall', 'barthann', 'cosine', 'exponential,tukey', 'taylor', 'lanczos']:     
+                            thewindow=signal.get_window(spectrum_scipy_windowtype,NP)
+                        elif spectrum_scipy_windowtype in ['kaiser(beta)', 'kaiser_bessel_derived(beta)', 'gaussian(standarddeviation)', 'general_hamming(windowcoefficient)', 'dpss(normalizedhalf-bandwidth)', 'chebwin(attenuation)']:
+                            splitted=spectrum_scipy_windowtype.split('(')
+                            params=self.get_list_of_float_or_None(spectrum_scipy_parameters)
+                            windowtuple=(splitted[0],params[0])
+                            thewindow=signal.get_window(windowtuple,NP)
+                        elif spectrum_scipy_windowtype in ['general_gaussian(powerandwidth)']:
+                            splitted=spectrum_scipy_windowtype.split('(')
+                            params=self.get_list_of_float_or_None(spectrum_scipy_parameters)
+                            windowtuple=(splitted[0],params[0],params[1])
+                            thewindow=signal.get_window(windowtuple,NP)
+                        elif spectrum_scipy_windowtype in ['general_cosine(weightingcoefficients)']:
+                            splitted=spectrum_scipy_windowtype.split('(')
+                            params=self.get_list_of_float_or_None(spectrum_scipy_parameters)
+                            windowtuple=(splitted[0],params.asarray())
+                            thewindow=signal.get_window(windowtuple,NP)
+                    except Exception as e:
+                        thewindow=matplotlib.mlab.window_none(NP)
+                        log.warning('Scipy {} Window Error: {}'.format(spectrum_scipy_windowtype,e))
+                else:
+                    thewindow=matplotlib.mlab.window_none(NP)
+                if not numpy.iterable(thewindow): #none gives an int
+                    thewindow = numpy.ones(NP)
+                return thewindow
+            
+            if spectrum_pad_to<0:
+                spectrum_pad_to=None
+            #log.info('window : {}'.format(thewindow))        
+            if doplot==True:      
+                #log.info('xy({}) {} \n ccc({}) {}'.format(len(xy),xy,len(ccc),ccc))  
+                #log.info('test {}'.format(spectrum_window_call(100))) 
+
+                #   
+                if Plotinfo['Plot_Type']=='specgram':     
+                    spectrum_window_call=lambda valx: spectrum_window_func(xy,spectrum_window,spectrum_scipy_windowtype,spectrum_scipy_parameters,valx,spectrum_NFFT)      
+                    if colormap_dict[value][1]==1: #colormap active                    
+                        thecmap=colormap_dict[value][0]
+                        log.info('{} {} with colormap'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'])) 
+                        spectrum,freqs,ttt,im = ax.specgram(xy, NFFT=spectrum_NFFT, Fs=spectrum_Fs, Fc=spectrum_Fc, detrend=spectrum_detrend, window=spectrum_window_call, noverlap=spectrum_noverlap, cmap=thecmap, vmin=cmvmin, vmax=cmvmax, xextent=None, pad_to=spectrum_pad_to, sides=spectrum_sides, scale_by_freq=spectrum_scale_by_freq, mode=spectrum_mode, scale=spectrum_scale)
+                        try:
+                            #imlist=ax.get_images()
+                            self.set_color_map_label(im,ax,thecmap,Plotinfo)  
+                        except Exception as e:
+                            log.error('Making colormap label: {}'.format(e))
+                            pass
+                    else:
+                        log.info('{} {} without colormap'.format(Plotinfo['me_plot'],Plotinfo['Plot_Type'])) 
+                        spectrum,freqs,ttt,im = ax.specgram(xy, NFFT=spectrum_NFFT, Fs=spectrum_Fs, Fc=spectrum_Fc, detrend=spectrum_detrend, window=spectrum_window_call, noverlap=spectrum_noverlap, pad_to=spectrum_pad_to, sides=spectrum_sides, scale_by_freq=spectrum_scale_by_freq, mode=spectrum_mode, scale=spectrum_scale)   #xextent=None 
+                    plinfo.update({'x':xy})
+                    plinfo.update({'y':ccc})  
+                    plinfo.update({'z':None}) 
+                    plinfo.update({'spectrum':spectrum})
+                    plinfo.update({'freqs':freqs})
+                    plinfo.update({'t':ttt})
+                
+                if Plotinfo['Plot_Type']=='psd':  
+                    spectrum_window_call=lambda valx: spectrum_window_func(xy,spectrum_window,spectrum_scipy_windowtype,spectrum_scipy_parameters,valx,spectrum_NFFT)
+                    Pxx,freqs,line = ax.psd(xy, NFFT=spectrum_NFFT, Fs=spectrum_Fs, Fc=spectrum_Fc, detrend=spectrum_detrend, window=spectrum_window_call, noverlap=spectrum_noverlap, pad_to=spectrum_pad_to, sides=spectrum_sides, scale_by_freq=spectrum_scale_by_freq, return_line=True)   #xextent=None 
+                    plinfo.update({'x':xy})
+                    plinfo.update({'y':None})  
+                    plinfo.update({'z':None}) 
+                    plinfo.update({'Pxx':Pxx})
+                    plinfo.update({'freqs':freqs})
+                
+                if Plotinfo['Plot_Type']=='magnitude_spectrum':  
+                    spectrum_window_call=lambda valx: spectrum_window_func(xy,spectrum_window,spectrum_scipy_windowtype,spectrum_scipy_parameters,valx,len(xy))
+                    spectrum,freqs,line = ax.magnitude_spectrum(xy, Fs=spectrum_Fs, Fc=spectrum_Fc, window=spectrum_window_call, pad_to=spectrum_pad_to, sides=spectrum_sides, scale=spectrum_scale)  
+                    plinfo.update({'x':xy})
+                    plinfo.update({'y':None})  
+                    plinfo.update({'z':None}) 
+                    plinfo.update({'spectrum':spectrum})
+                    plinfo.update({'freqs':freqs})
+                
+                if Plotinfo['Plot_Type']=='angle_spectrum':  
+                    spectrum_window_call=lambda valx: spectrum_window_func(xy,spectrum_window,spectrum_scipy_windowtype,spectrum_scipy_parameters,valx,len(xy))
+                    spectrum,freqs,line = ax.angle_spectrum(xy, Fs=spectrum_Fs, Fc=spectrum_Fc, window=spectrum_window_call, pad_to=spectrum_pad_to, sides=spectrum_sides)  
+                    plinfo.update({'x':xy})
+                    plinfo.update({'y':None})  
+                    plinfo.update({'z':None}) 
+                    plinfo.update({'spectrum':spectrum})
+                    plinfo.update({'freqs':freqs})
+                
+                if Plotinfo['Plot_Type']=='phase_spectrum':  
+                    spectrum_window_call=lambda valx: spectrum_window_func(xy,spectrum_window,spectrum_scipy_windowtype,spectrum_scipy_parameters,valx,len(xy))
+                    spectrum,freqs,line = ax.phase_spectrum(xy, Fs=spectrum_Fs, Fc=spectrum_Fc, window=spectrum_window_call, pad_to=spectrum_pad_to, sides=spectrum_sides)  
+                    plinfo.update({'x':xy})
+                    plinfo.update({'y':None})  
+                    plinfo.update({'z':None}) 
+                    plinfo.update({'spectrum':spectrum})
+                    plinfo.update({'freqs':freqs})
+                    
+                plotok=True   
+                self.set_legends_title(ax,Plotinfo) 
+                self.set_axis_ticks(ax,Plotinfo)                      
+
+        except Exception as e:
+            log.error('Making {} plot'.format(Plotinfo['Plot_Type']))
+            log.error(e)
+            self.log_Exception()
+            plotok=False
+        return plotok,plinfo,ax,Plotinfo
 
     def do_a_scatter_plot(self,ax,Plotinfo):        
         plinfo=self.get_plotted_info(Plotinfo) 
@@ -1734,6 +1921,15 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             plotok=False  
         return plotok,plinfo,ax,Plotinfo
 
+    def get_list_of_float_or_None(self,alist):
+        newlist=[]
+        for iii,atxt in enumerate(alist):
+            try:
+                val=float(atxt)
+                newlist.append(val)
+            except:
+                newlist.append(None)
+        return newlist
 
     def do_a_Stack_plot(self,ax,Plotinfo):     
         # stack, stairs, event, violin, pie   
@@ -3623,6 +3819,9 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         if Plotinfo['Plot_Type'] in ['boxplot']:
             plotok,plinfo,ax,Plotinfo=self.do_a_Box_plot(ax,Plotinfo) 
 
+        if Plotinfo['Plot_Type'] in ['specgram','psd','magnitude_spectrum','angle_spectrum','phase_spectrum']:
+            plotok,plinfo,ax,Plotinfo=self.do_a_spectrum_plot(ax,Plotinfo) 
+            
         if Plotinfo['Plot_Type'] in ['plot','loglog','semilogx','semilogy','errorbar']:
             plotok,plinfo,ax,Plotinfo=self.do_a_plot_plot(ax,Plotinfo) 
 
@@ -5362,9 +5561,21 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         plotinfo.update({'boxplot_capprops_linewidth':ppp['Boxplot']['capprops']['linewidth']})
         #plotinfo.update({'boxplot_capprops_capsize':ppp['Boxplot']['capprops']['capsize']})
         plotinfo.update({'boxplot_capprops_capwidths':ppp['Boxplot']['capprops']['capwidths']})
+        # Spectrum
+        plotinfo.update({'spectrum_NFFT':ppp['Spectrum']['NFFT']})
+        plotinfo.update({'spectrum_Fs':ppp['Spectrum']['Fs']})
+        plotinfo.update({'spectrum_Fc':ppp['Spectrum']['Fc']})
+        plotinfo.update({'spectrum_detrend':ppp['Spectrum']['detrend']})
+        plotinfo.update({'spectrum_window':ppp['Spectrum']['window']})
+        plotinfo.update({'spectrum_noverlap':ppp['Spectrum']['noverlap']})
+        plotinfo.update({'spectrum_pad_to':ppp['Spectrum']['pad_to']})
+        plotinfo.update({'spectrum_sides':ppp['Spectrum']['sides']})
+        plotinfo.update({'spectrum_scale_by_freq':ppp['Spectrum']['scale_by_freq']})
+        plotinfo.update({'spectrum_mode':ppp['Spectrum']['mode']})
+        plotinfo.update({'spectrum_scale':ppp['Spectrum']['scale']})
+        plotinfo.update({'spectrum_scipy_windowtype':ppp['Spectrum']['scipy']['windowtype']})
+        plotinfo.update({'spectrum_scipy_parameters':ppp['Spectrum']['scipy']['parameters']})
         
-        
-
         #Layout
         numplots=len(self.Plot_dict)
         layout=ppp['Layout_Position_HV']
@@ -6113,9 +6324,9 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
 
                
 
-    def correct_layout(self,numplots,layout,sizes):
-        layout[0]=self.limit_var(layout[0],1,numplots)
-        layout[1]=self.limit_var(layout[1],1,numplots)
+    def correct_layout(self,numplots,layout,sizes):        
+        layout[0]=self.limit_var(int(layout[0]),1,numplots)
+        layout[1]=self.limit_var(int(layout[1]),1,numplots)
         # no need to limit layout anymore
         '''if layout[1]+layout[0]>numplots+1:
             if layout[0]>=layout[1]:

@@ -154,7 +154,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
             'Pie':{ 'explode':[0],'colors':[''], 'autopct':'', 'pctdistance':0.6, 'shadow':False, 'labeldistance':1.1, 'startangle':0, 'radius':1, 'counterclock':True, 'wedgeprops':{"width":1,"linewidth": 1, "edgecolor": "white"}, 'textprops':{'color':'black', 'weight':"bold",'size':8}, 'center':[0, 0], 'frame':False, 'rotatelabels':False, 'normalize':True}, 
             'Violinplot':{'positions_key':'', 'vert':True, 'widths':0.5, 'showmeans':False, 'showextrema':True, 'showmedians':False, 'quantiles':[''], 'points':100, 'bw_method':'scott','bw_method_KDE':0.0},
             'Boxplot':{'positions':[], 'widths':[],'notch':False, 'sym':'b+', 'orientation':'vertical', 'whis':[0,100], 'bootstrap':None, 'usermedians':[], 'patch_artist':False, 'conf_intervals':['',''], 'meanline':False, 'showmeans':False, 'showcaps':True, 'showbox':True, 'showfliers':True, 'manage_ticks':True, 'autorange':False, 'zorder':0.2, 'boxprops':{'color':['k'],'linestyle':['-'],'linewidth':[1.0]}, 'flierprops': {'marker':['o'], 'markerfacecolor':['r'], 'markersize':[12], 'linestyle':[''], 'markeredgecolor':['g'],'linewidth':[1.0]}, 'medianprops':{'color':['r'],'linestyle':['-'],'linewidth':[1.0]}, 'meanprops':{'color':['r'],'marker':['^'],'markerfacecolor':['r'],'markeredgecolor':['k'],'markersize':[6],'linestyle':['--'],'linewidth':[1.0]}, 'capprops':{'color':['k'],'capwidths':[0.25],'linestyle':['-'],'linewidth':[1.0]}, 'whiskerprops':{'color':['k'],'linestyle':['-'],'linewidth':[1.0]}},
-            
+            'Spectrum':{'NFFT':256, 'Fs':2.0, 'Fc':0, 'detrend':'none', 'window':'none','scipy':{'windowtype':'hann','parameters':[]}, 'noverlap':128, 'pad_to':-1, 'sides':'default', 'scale_by_freq':True, 'mode':'psd', 'scale':'default'},
             'Background':{'BG_Path_File':'','Show_Axis':True,'BG_Aspect':1,'BG_Out_Color':'None','BG_in_Color':'None','BG_out_alpha':1,'BG_in_alpha':1},
             'Error_bars':{'Use_Err_bars':False,'Err_Y_Use_key':'ErrUp=0.5','Err_X_Use_key':'ErrLow=0.5','fmt':'o','capthick':2.0,'barsabove':False,'elinewidth':2.0,'ecolor':'black','capsize':0.0,'errorevery_X':1,'errorevery_Y':1,'lolims':[False], 'uplims':[False], 'xlolims':[False], 'xuplims':[False]},
             'Additional':{'Axis_U': self.get_one_axis_struct('',[-100,100],'', [-80.0,80.0],True,90,5.0,12,True),'Axis_V': self.get_one_axis_struct('',[-100,100],'', [-80.0,80.0],True,90,5.0,12,True),'Axis_W': self.get_one_axis_struct('',[-100,100],'', [-80.0,80.0],True,90,5.0,12,True),'math_definitions':'cte=5|ctlst=[1,2,3]','math_declarations':['']},
@@ -192,7 +192,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
             else:
                 markerlistmod.append(mmm)
 
-        plottypelist=['image','scatter','contour','contourf','bar','barh','loglog','semilogx','semilogy','quiver','barbs','plot','hist','hist2d','errorbar','stem','streamplot','lines','eventplot','stackplot','stairs','specgram','phase_spectrum','magnitude_spectrum','pie','violin','boxplot'] #3D others surface, contour3D
+        plottypelist=['image','scatter','contour','contourf','bar','barh','loglog','semilogx','semilogy','quiver','barbs','plot','hist','hist2d','errorbar','stem','streamplot','lines','eventplot','stackplot','stairs','pie','violin','boxplot','specgram','psd','magnitude_spectrum','angle_spectrum','phase_spectrum'] #  3D others surface, contour3D
         dashcapstylist=['butt', 'projecting', 'round']
         dashjoinstylist=['miter', 'round', 'bevel']
         drawstylelist=['default', 'steps', 'steps-pre', 'steps-mid', 'steps-post']
@@ -218,6 +218,14 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
         legendmode=[None,'expand','']    
         legendalignment=['center', 'left', 'right'] 
         violinmethod=['scott', 'silverman']
+        spectrumdetrend=['none', 'mean', 'linear']
+        spectrumwindow=['hanning', 'none', 'blackman', 'hamming', 'bartlett', 'scipy_signal']
+        spectrumscipy=['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen', 'bohman', 'blackmanharris', 'nuttall', 'barthann', 'cosine', 'exponential,tukey', 'taylor', 'lanczos', 
+                        'kaiser(beta)', 'kaiser_bessel_derived(beta)', 'gaussian(standarddeviation)', 'general_cosine(weightingcoefficients)', 'general_gaussian(powerandwidth)', 'general_hamming(windowcoefficient)', 
+                        'dpss(normalizedhalf-bandwidth)', 'chebwin(attenuation)']
+        spectrumsides=['default', 'onesided', 'twosided']
+        spectrummode=['psd','complex','magnitude','angle','phase']
+        spectrumscale=['default', 'linear', 'dB']
         typefloat=str(type(0.1))
         typeint=str(type(0))
         typestr=str(type('hola'))
@@ -290,7 +298,7 @@ class Ui_MainWindow_PP(GUI_PostProcessing.Ui_MainWindow):
                         'meanprops':{'color':list_color_res,'marker':list_marker_res,'markerfacecolor':list_color_res,'markeredgecolor':list_color_res,'markersize':list_markersize_res,'linestyle':list_linestyle_res,'linewidth':list_linewidth_res}, 
                         'capprops':{'color':list_color_res,'capwidths':list_float_res,'linestyle':list_linestyle_res,'linewidth':list_linewidth_res}, 
                         'whiskerprops':{'color':list_color_res,'linestyle':list_linestyle_res,'linewidth':list_linewidth_res}},
-            
+              'Spectrum':{'NFFT':value_int_res, 'Fs':value_float_res, 'Fc':value_int_res, 'detrend':{'__m__':'limited_selection','__mv__':spectrumdetrend}, 'window':{'__m__':'limited_selection','__mv__':spectrumwindow}, 'scipy':{'windowtype':{'__m__':'limited_selection','__mv__':spectrumscipy},'parameters':list_str_res}, 'noverlap':value_int_res, 'pad_to':value_int_res, 'sides':{'__m__':'limited_selection','__mv__':spectrumsides}, 'mode':{'__m__':'limited_selection','__mv__':spectrummode}, 'scale':{'__m__':'limited_selection','__mv__':spectrumscale}},
               'Error_bars':{'Err_Y_Use_key':value_eqformat_res,'Err_X_Use_key':value_eqformat_res,'capsize':{'__m__':'is_value_type','__mv__':typeint,'__m__':'is_value_GTEQ','__mv__':0.0},'capthick':value_float_res,'elinewidth':value_float_res,'capsize':value_float_res,'errorevery_X':value_intGT0_res,'errorevery_Y':value_intGT0_res,'lolims':list_bool_res, 'uplims':list_bool_res, 'xlolims':list_bool_res, 'xuplims':list_bool_res},# 'fmt':{'__m__':'limited_selection','__mv__':markerlistmod}
               'Background':{'BG_Aspect':value_intGT0_res,'BG_out_alpha':value_intGTEQ0LTEQ1_res,'BG_in_alpha':value_intGTEQ0LTEQ1_res},
               'Additional':{'Axis_U': self.get_one_axis_struct_mask(),'Axis_V': self.get_one_axis_struct_mask(),'Axis_W': self.get_one_axis_struct_mask(),'math_declarations':list_eqformat_res,'math_definitions':{'__m__':'is_format','__mv__':'([a-zA-Z_].*=.+)(|[a-zA-Z_].*=.+)*'}},
