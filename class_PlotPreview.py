@@ -225,6 +225,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             'pi': math.pi, 'e': math.e, 'tau': math.tau, 
             'inf': math.inf, 'nan': math.nan, 'NaN':numpy.nan, 'max':numpy.max,'min':numpy.min,
             'average':numpy.average,'phi':self.get_phi(),'range':self.listrange,'np':numpy,'abs':numpy.abs,
+            'fft':numpy.fft.fft,
             #'dflist':self.make_df_var_list
             }} 
     
@@ -276,7 +277,13 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             #use matplotlib color iterator
             colorstr=self.get_line_color(iii,{'linecolor':['']},'linecolor') 
             colortuple=matplotlib.colors.to_rgba(colorstr,alpha=0.5)
-            color=QtGui.QColor(*colortuple)            
+            if isinstance(colortuple[0],float):
+                ncolortuple=tuple()
+                for iii in colortuple:
+                    ncolortuple=ncolortuple+(int(iii*255),)
+                color=QtGui.QColor(*ncolortuple)            
+            else:
+                color=QtGui.QColor(*colortuple)            
             '''
             #with random color generation
             mRGB=255*numpy.random.rand(3,1)
@@ -623,7 +630,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                 canvas=matplotlib.backends.backend_agg.FigureCanvasAgg(afig)                                
                 canvas.draw()
                 width, height = afig.figbbox.width, afig.figbbox.height                
-                img = QtGui.QImage(canvas.buffer_rgba(), width, height, QtGui.QImage.Format_ARGB32)            
+                img = QtGui.QImage(canvas.buffer_rgba().tobytes(), int(width), int(height), QtGui.QImage.Format_ARGB32)            
                 
                 pixmapfig=QtGui.QPixmap(img)
                 Scenerect=self.DPPui.graphicsView.sceneRect()
@@ -4887,7 +4894,11 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         if is_Samex==False and is_Samext==False:
             #log.info('Selected vector pos 0 {} {}'.format((is_Samex,is_Samey),(is_Samext,is_Sameyt )))
             solx=solx[0]
-            soly=soly[0]        
+            soly=soly[0]    
+        elif (is_Samex==False or is_Samext==False) and equal_size:
+            #log.info('Selected vector pos 0 {} {}'.format((is_Samex,is_Samey),(is_Samext,is_Sameyt )))
+            solx=solx[0]
+            soly=soly[0]       
         #log.info('xv yv {} {} solx soly {} {}'.format(xv,yv,solx,soly))
         return solx,soly,equal_size
 
@@ -6887,9 +6898,9 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
             dfaxisignore_x=plotinfo['dfaxisignore_x']
             dfaxisignore_y=plotinfo['dfaxisignore_y']
             dfaxisignore_z=plotinfo['dfaxisignore_z']
-            ux=numpy.unique(dfaxis_x)
-            uy=numpy.unique(dfaxis_y)
-            uz=numpy.unique(dfaxis_z)
+            ux=self.get_unique_same_order(dfaxis_x)
+            uy=self.get_unique_same_order(dfaxis_y)
+            uz=self.get_unique_same_order(dfaxis_z)
             plotinfo.update({'ux':ux})
             plotinfo.update({'uy':uy})
             plotinfo.update({'uz':uz})
@@ -7166,7 +7177,18 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
         plotinfo.update({'Reverse_Data_Series':ppp['Reverse_Data_Series']})
         return plotinfo
                        
-           
+    def get_unique_same_order(self,df_array):
+        """Gets unique vector in same data order"""
+        # unique sorts data 
+        u_sort, indices =numpy.unique(df_array,return_index=True)
+        if len(u_sort)>1:
+            return df_array
+        # sort data in original order, ->indeces are of df_array and new size is smaller->error
+        # uuu=numpy.zeros_like(u_sort)
+        # for val,index in zip(u_sort, indices):
+        #     uuu[index]=val
+        return numpy.zeros_like(u_sort)
+
         
     def get_list_of_values(self,df,variable):  
         valuesList=[]  
@@ -7390,7 +7412,7 @@ class PlotPreviewDialog(QWidget,GUI_PlotPreview.Ui_Dialog_PlotPreview):
                 # if in original datafield i.e in csv file
                 if hasm==True:
                 #if self.is_variable_in_datafield(axis_fn,use_original=True)==False and hasm==True:
-                    axis_weq,filter=self.get_filter_var_name(xaxis,filtereq=False) 
+                    axis_weq,filter=self.get_filter_var_name(xxx_axis,filtereq=False) 
                     axis_fn,the_eq=self.get_filter_math_var_name(axis_weq)                                                            
                     #evaluate eq
                     try:
